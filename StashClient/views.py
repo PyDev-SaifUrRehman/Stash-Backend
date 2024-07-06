@@ -189,7 +189,8 @@ class TransactionViewSet(viewsets.ModelViewSet):
                 return Response({"Message": "Invalid referral code...."})
                 
             refered_user = sender.referred_by.user
-            master_node = MasterNode.objects.filter(node = node).last()
+            master_node = MasterNode.objects.filter(node = node).order_by('-pk')[0]
+
             print("node id",node.node_id)
             print("node id",node)
             print("referal code",sender.referral_code)
@@ -302,6 +303,111 @@ class TransactionViewSet(viewsets.ModelViewSet):
             'transactions': serializer.data
         }
         return Response(response_data)
+    
+
+class CommissionViewset(viewsets.ModelViewSet):
+    queryset = Transaction.objects.all()
+    serializer_class = TransactionSerializer
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        sender = serializer.validated_data['sender']
+        user_walletaddress = sender.wallet_address
+        user_referral = sender.referred_by
+        user_referral_tpye = user_referral.user.user_type
+        print("wallllllet",user_referral_tpye)
+        node = serializer.validated_data['node']
+        amount = serializer.validated_data['node_quantity']
+        transaction_type = serializer.validated_data['transaction_type']
+        commission_percentage = node.node_commission_percentage
+
+        # if user_referral_tpye == 'MasterNode':
+            # referral_commission = amount * commission_percentage/100
+            # Transaction.objects.create(sender=user_referral, amount=commission_amount, transaction_type='Commission Earned')
+            
+        node_id = serializer.validated_data.get('node_id')
+        node = serializer.validated_data.get('node')
+        referral_commission = amount * node.node_commission_percentage/100
+        master_node = MasterNode.objects.filter(node = node).order_by('-pk')[0]
+
+        try:
+            if not master_node.parent_node:
+                master_node1id = master_node.master_node_id
+            elif master_node.parent_node:
+                master_node1id = master_node.parent_node.master_node_id
+                master_node2id = master_node.master_node_id
+        except:
+            return Response({"Message": "No master node found...."})
+
+        if transaction_type == 'ETH 2.0 Node':
+            # if sender.referred_by.user.referral_code == node_id or :
+            # commission_amount = amount * commission_percentage/100
+            # elif sender.referred_by.user.referral_code == master_node
+            print("1")
+            if sender.referred_by and sender.referred_by.commission_received == False:
+                referral = sender.referred_by
+                referred_by_user = sender.referred_by.user
+                referred_by_maturity = referred_by_user.maturity
+                user_ref_commision = referral.commission_earned
+                print("1")
+
+                if referred_by_maturity - referred_by_user.claimed_reward >= referral_commission:
+                    referred_by_user.claimed_reward += referral_commission
+                    referred_by_user.save()
+                    referral.increase_commission_earned(referral_commission)
+                    commission_transaction = Transaction.objects.create(
+                        sender=sender,
+                        amount=referral_commission,
+                        transaction_type='Commission'
+                    )
+                    referral.commission_transactions = commission_transaction
+                    referral.user.claimed_reward += referral_commission
+                    referral.save()
+                    serializer.save(amount = amount)
+                    sender.maturity += amount*2
+                    sender.referred_by.mark_commission_received()
+                    sender.total_deposit += amount
+                    sender.save()
+                    print("3")
+
+                elif referred_by_maturity - referred_by_user.claimed_reward < referral_commission and referred_by_maturity- referred_by_user.claimed_reward != 0:
+                    commision_added = referred_by_maturity - referred_by_user.claimed_reward
+                    referred_by_user.claimed_reward += commision_added
+                    referred_by_user.save()
+                    referral.increase_commission_earned(commision_added)
+                    commission_transaction = Transaction.objects.create(
+                        # sender=referral.user,
+                        sender=sender,
+                        amount=commision_added,
+                        transaction_type='Commission'
+                    )
+                    referral.commission_transactions = commission_transaction
+
+                    referral.save()
+                    serializer.save(amount = amount)
+                    sender.maturity += amount*2
+                    sender.total_deposit += amount
+                    sender.referred_by.mark_commission_received()
+                    sender.save()
+                    print("4")
+                
+                else:
+                    
+                    sender.maturity += amount*2
+                    sender.total_deposit += amount
+                    sender.save()
+                    serializer.save(amount = amount)
+
+            else:
+                sender.maturity += amount*2
+                sender.total_deposit += amount
+                sender.save()
+                serializer.save(amount = amount)
+
+
+        return super().create(request, *args, **kwargs)
+
 
 
 class ServerInformationViewset(viewsets.GenericViewSet, ListModelMixin):

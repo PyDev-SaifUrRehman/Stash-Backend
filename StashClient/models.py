@@ -26,6 +26,8 @@ class ClientUser(BaseUser):
     generated_reward = models.DecimalField(max_digits=14, decimal_places=2, default=0)
     claimed_reward = models.DecimalField(max_digits=14, decimal_places=2, default=0)
     total_revenue = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    maturity = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    total_deposit = models.DecimalField(max_digits=14, decimal_places=2, default=0)
     referral_code = models.CharField(max_length=100, unique=True, null = True, blank=True)
 
     def save(self, *args, **kwargs):
@@ -84,23 +86,24 @@ class Transaction(models.Model):
         ('SuperNode Boost', 'SuperNode Boost'),
         ('Generated SubNode', 'Generated SubNode'),
         ('Stake & Swim Boost', 'Stake & Swim Boost'),
-        ('ETH 2.0 Node', 'ETH 2.0 Node')
+        ('ETH 2.0 Node', 'ETH 2.0 Node'),
+        ('Commission', 'Commission')
     ]
 
     sender = models.ForeignKey(
         ClientUser, on_delete=models.CASCADE, related_name='transactions')
     block_id = models.PositiveIntegerField()
     node = models.ForeignKey("StashAdmin.NodeSetup", on_delete=models.CASCADE, related_name='trx_node')
-    node_quantity = models.PositiveIntegerField(default=1)
-    stake_swim_quantity = models.PositiveIntegerField(default=1)
+    node_quantity = models.PositiveIntegerField(null=True, blank= True, default=1)
+    stake_swim_quantity = models.PositiveIntegerField(null= True, blank= True,default=1)
     amount = models.DecimalField(max_digits=14, decimal_places=2, default=0)
-    supernode_quantity = models.PositiveIntegerField(default=1)
+    supernode_quantity = models.PositiveIntegerField(null = True, blank= True, default=1)
     timestamp = models.DateTimeField(auto_now_add=True)
     server_type = models.CharField(
-        max_length=255, choices=SERVER_TYPES)
+        null = True, blank= True, max_length=255, choices=SERVER_TYPES)
     trx_hash = models.CharField(max_length=255, null=True, blank=True)
     transaction_type = models.CharField(max_length=255, choices=TRANSACTION_TYPE)
-    setup_charges = models.DecimalField(max_digits=14, decimal_places=2, default=100)
+    setup_charges = models.DecimalField(null = True, blank = True, max_digits=14, decimal_places=2, default=100)
 
     def __str__(self):
         return f"{self.sender}"

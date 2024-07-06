@@ -37,9 +37,9 @@ class AddressToUserField(serializers.RelatedField):
 
 class TransactionSerializer(serializers.ModelSerializer):
     sender = AddressToUserField(
-        queryset=BaseUser.objects.all())
+        queryset=ClientUser.objects.all())
     # amount = serializers.SerializerMethodField()
-    node = NodeSetupSerializer()
+    # node = NodeSetupSerializer()
 
     class Meta:
         model = Transaction
