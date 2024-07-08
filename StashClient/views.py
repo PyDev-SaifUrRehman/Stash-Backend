@@ -148,7 +148,7 @@ class ReferralViewSet(viewsets.ModelViewSet):
             "commission_earned": total_commission_earned})
 
 
-class TransactionViewSet(viewsets.ModelViewSet):
+class ClaimViewSet(viewsets.ModelViewSet):
     queryset = Transaction.objects.all()
 
     serializer_class = TransactionSerializer
@@ -263,9 +263,12 @@ class TransactionViewSet(viewsets.ModelViewSet):
 
     
 
-class CommissionViewset(viewsets.ModelViewSet):
+class TransactionViewset(viewsets.ModelViewSet):
     queryset = Transaction.objects.all()
     serializer_class = TransactionSerializer
+    filter_backends = [filters.SearchFilter, DjangoFilterBackend]
+    filterset_fields = ['sender__wallet_address',
+                        'sender__referred_by__user__wallet_address', 'transaction_type']
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
