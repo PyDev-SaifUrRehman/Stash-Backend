@@ -19,6 +19,7 @@ class ClientUserViewSet(viewsets.ModelViewSet):
     queryset = ClientUser.objects.all()
     serializer_class = ClientUserSerializer
 
+
     def create(self, request):
         # ref_code = request.query_params.get('ref')
         ref_code = request.data.get('ref')
@@ -54,16 +55,18 @@ class ClientUserViewSet(viewsets.ModelViewSet):
         except (ObjectDoesNotExist, ValueError):
             return Response({"detail": "User not found or invalid address"}, status=status.HTTP_404_NOT_FOUND)
         serializer = self.get_serializer(instance)
-        instance.update_balance()
+        # instance.update_balance()
         try:
             referrals = Referral.objects.filter(user=instance)
             total_referred_users = referrals.aggregate(total_users=models.Sum('no_of_referred_users'))['total_users'] or 0
 
         except: 
             referrals = 0
-        instance.update_balance()
+        # instance.update_balance()
         serializer_data = serializer.data
+        node = NodeSetup.objects.filter(user = instance).count() or 0
         serializer_data['referral'] = total_referred_users
+        serializer_data['total_nodes'] = node
         return Response(serializer_data, status=status.HTTP_200_OK)        
 
 
