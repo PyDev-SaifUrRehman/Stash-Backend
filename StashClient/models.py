@@ -92,8 +92,8 @@ class Transaction(models.Model):
 
     sender = models.ForeignKey(
         ClientUser, on_delete=models.CASCADE, related_name='transactions')
-    block_id = models.PositiveIntegerField()
-    node = models.ForeignKey("StashAdmin.NodeSetup", on_delete=models.CASCADE, related_name='trx_node')
+    block_id = models.PositiveIntegerField(null=True, blank=True)
+    node = models.ForeignKey("StashAdmin.NodeSetup", on_delete=models.CASCADE, null=True, blank=True, related_name='trx_node')
     node_quantity = models.PositiveIntegerField(null=True, blank= True, default=1)
     stake_swim_quantity = models.PositiveIntegerField(null= True, blank= True,default=1)
     amount = models.DecimalField(max_digits=14, decimal_places=2, default=0)
