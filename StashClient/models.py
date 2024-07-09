@@ -14,6 +14,7 @@ class BaseUser(models.Model):
     wallet_address = models.CharField(max_length=100)
     user_type = models.CharField(
         max_length=20, choices=USER_TYPE_CHOICES)
+    
 
     def __str__(self) -> str:
         return self.wallet_address
@@ -95,16 +96,16 @@ class Transaction(models.Model):
     block_id = models.PositiveIntegerField(null=True, blank=True)
     node = models.ForeignKey("StashAdmin.NodeSetup", on_delete=models.CASCADE, null=True, blank=True, related_name='trx_node')
     node_quantity = models.PositiveIntegerField(null=True, blank= True, default=1)
-    stake_swim_quantity = models.PositiveIntegerField(null= True, blank= True,default=1)
+    stake_swim_quantity = models.PositiveIntegerField(null= True, blank= True, default=0)
     amount = models.DecimalField(max_digits=14, decimal_places=2, default=0)
-    supernode_quantity = models.PositiveIntegerField(null = True, blank= True, default=1)
+    supernode_quantity = models.PositiveIntegerField(null = True, blank= True, default=0)
     timestamp = models.DateTimeField(auto_now_add=True)
     server_type = models.CharField(
         null = True, blank= True, max_length=255, choices=SERVER_TYPES)
     trx_hash = models.CharField(max_length=255, null=True, blank=True)
     transaction_type = models.CharField(max_length=255, choices=TRANSACTION_TYPE)
-    setup_charges = models.DecimalField(null = True, blank = True, max_digits=14, decimal_places=2, default=100)
+    setup_charges = models.PositiveIntegerField(null = True, blank = True, default=100)
 
     def __str__(self):
-        return f"{self.sender}"
+        return f"{self.sender}- {self.transaction_type}"
 

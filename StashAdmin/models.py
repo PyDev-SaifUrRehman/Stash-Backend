@@ -15,10 +15,10 @@ class AdminUser(BaseUser):
 
 class NodeSetup(models.Model):
     node_id = models.CharField(max_length=255)
-    user = models.ForeignKey(BaseUser, on_delete=models.CASCADE, related_name='node_setup')
-    cost_per_node = models.DecimalField(max_digits=14, decimal_places=2)
-    booster_node_1_cost = models.DecimalField(max_digits=14, decimal_places=2)
-    booster_node_2_cost = models.DecimalField(max_digits=14, decimal_places=2)
+    user = models.ForeignKey(AdminUser, on_delete=models.CASCADE, related_name='node_setup')
+    cost_per_node = models.PositiveIntegerField()
+    booster_node_1_cost = models.PositiveIntegerField()
+    booster_node_2_cost = models.PositiveIntegerField()
     node_commission_percentage = models.DecimalField(max_digits=14, decimal_places=2)
     stash_linode = models.DecimalField(max_digits=14, decimal_places=2)
     amazon_quantum_ledger = models.DecimalField(max_digits=14, decimal_places=2)

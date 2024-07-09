@@ -38,6 +38,9 @@ class AddressToUserField(serializers.RelatedField):
 class TransactionSerializer(serializers.ModelSerializer):
     sender = AddressToUserField(
         queryset=ClientUser.objects.all())
+    supernode_quantity = serializers.IntegerField(default = 0)
+    stake_swim_quantity = serializers.IntegerField(default = 0)
+    
     # amount = serializers.SerializerMethodField()
     # node = NodeSetupSerializer()
 

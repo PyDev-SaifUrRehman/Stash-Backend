@@ -115,3 +115,31 @@ class NodeManagerViewset(viewsets.ModelViewSet):
     filter_backends = [filters.SearchFilter, DjangoFilterBackend]
     filterset_fields = ['node__user__referral_code']
     
+
+from StashClient.models import Transaction, ClientUser
+from django.db.models import Value, Sum, F
+class AdminNodeOverview(viewsets.ModelViewSet):
+
+    queryset = AdminUser.objects.all()
+    serializer_class = AdminUserSerializer
+
+    def list(self, request, *args, **kwargs):
+
+        total_eth2_nodes_count = Transaction.objects.filter(transaction_type = 'ETH 2.0 Node').count() or 0
+        stake_swim_boostcount = Transaction.objects.filter(transaction_type = 'Stake & Swim Boost').count() or 0
+        total_setup_fee = Transaction.objects.filter(transaction_type = 'ETH 2.0 Node').aggregate(setup_charges = models.Sum('setup_charges'))['setup_charges'] or 0
+        total_super_nodes_count = 0
+        # active_nodes_balance = 0  #node amount that are not exausted, mean maturity - withdrawal == 0 users
+        active_nodes_balance = ClientUser.objects.exclude(maturity=F('claimed_reward')).aggregate(amount=Sum('total_deposit'))['amount'] or 0
+        
+        # active_nodes_balance = ClientUser.objects.filter(F('maturity') - F('claimed_reward') == Value(0))
+        print("act", active_nodes_balance)
+        # current_reward_balance = 0 # double the activenode balance
+        current_reward_balance = 2 * active_nodes_balance
+        # node_pass_revenue = 0 # amount deposited
+        node_pass_revenue = Transaction.objects.all().aggregate(amount = Sum('amount'))['amount'] or 0
+        # total_revenue = 0 # sum of these fees...
+        total_revenue = total_setup_fee + node_pass_revenue 
+
+        return Response({'total_eth2_nodes_count': total_eth2_nodes_count, 'stake_swim_boostcount': stake_swim_boostcount, 'total_setup_fee' : total_setup_fee, 'total_super_nodes_count' : total_super_nodes_count, 'active_nodes_balance':active_nodes_balance,'current_reward_balance':current_reward_balance, 'node_pass_revenue' :node_pass_revenue, 'total_revenue': total_revenue })
+

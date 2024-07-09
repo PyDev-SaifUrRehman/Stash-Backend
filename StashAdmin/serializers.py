@@ -12,10 +12,42 @@ class AdminUserSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ['referral_code', 'referred_by']
 
+    def validate(self, attrs):
+        qp_wallet_address = self.context['request'].query_params.get(
+            'address')
+        if qp_wallet_address:
+            try:
+                admin_user = AdminUser.objects.get(
+                    wallet_address=qp_wallet_address)
+            except AdminUser.DoesNotExist:
+                raise ValidationError(
+                    "You don't have permission to perform this action.")
+            return attrs
+        else:
+            raise serializers.ValidationError(
+                "No admin wallet address added")
+
+
 class ParentMasterNodeSerializer(serializers.ModelSerializer):
     class Meta:
         model = MasterNode
         fields = '__all__'
+
+    def validate(self, attrs):
+        qp_wallet_address = self.context['request'].query_params.get(
+            'address')
+        if qp_wallet_address:
+            try:
+                admin_user = AdminUser.objects.get(
+                    wallet_address=qp_wallet_address)
+            except AdminUser.DoesNotExist:
+                raise ValidationError(
+                    "You don't have permission to perform this action.")
+            return attrs
+        else:
+            raise serializers.ValidationError(
+                "No admin wallet address added")
+
 
 
 class MasterNodeSerializer(serializers.ModelSerializer):
@@ -24,6 +56,22 @@ class MasterNodeSerializer(serializers.ModelSerializer):
         model = MasterNode
         fields = '__all__'
         read_only_fields = ['parent_node', 'node_id']
+
+    def validate(self, attrs):
+        qp_wallet_address = self.context['request'].query_params.get(
+            'address')
+        if qp_wallet_address:
+            try:
+                admin_user = AdminUser.objects.get(
+                    wallet_address=qp_wallet_address)
+            except AdminUser.DoesNotExist:
+                raise ValidationError(
+                    "You don't have permission to perform this action.")
+            return attrs
+        else:
+            raise serializers.ValidationError(
+                "No admin wallet address added")
+
 
     # def create(self, validated_data):
     #     try:
@@ -68,6 +116,22 @@ class NodeManagerSerializer(serializers.ModelSerializer):
         model = NodeManager
         fields = '__all__'
 
+    def validate(self, attrs):
+        qp_wallet_address = self.context['request'].query_params.get(
+            'address')
+        if qp_wallet_address:
+            try:
+                admin_user = AdminUser.objects.get(
+                    wallet_address=qp_wallet_address)
+            except AdminUser.DoesNotExist:
+                raise ValidationError(
+                    "You don't have permission to perform this action.")
+            return attrs
+        else:
+            raise serializers.ValidationError(
+                "No admin wallet address added")
+
+
 
 class NodePartnerSerializer(serializers.ModelSerializer):
     class Meta:
@@ -84,6 +148,22 @@ class NodePartnerSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('The total share for a node must not exceed 100%.')
 
         return data
+    
+    def validate(self, attrs):
+        qp_wallet_address = self.context['request'].query_params.get(
+            'address')
+        if qp_wallet_address:
+            try:
+                admin_user = AdminUser.objects.get(
+                    wallet_address=qp_wallet_address)
+            except AdminUser.DoesNotExist:
+                raise ValidationError(
+                    "You don't have permission to perform this action.")
+            return attrs
+        else:
+            raise serializers.ValidationError(
+                "No admin wallet address added")
+
 
 
 class NodeSetupSerializer(serializers.ModelSerializer):
@@ -108,6 +188,22 @@ class NodeSetupSerializer(serializers.ModelSerializer):
             return value
         except AdminUser.DoesNotExist:
             raise serializers.ValidationError("Invalid User")
+        
+    def validate(self, attrs):
+        qp_wallet_address = self.context['request'].query_params.get(
+            'address')
+        if qp_wallet_address:
+            try:
+                admin_user = AdminUser.objects.get(
+                    wallet_address=qp_wallet_address)
+            except AdminUser.DoesNotExist:
+                raise ValidationError(
+                    "You don't have permission to perform this action.")
+            return attrs
+        else:
+            raise serializers.ValidationError(
+                "No admin wallet address added")
+
 
     # def create(self, validated_data):
     #     # transaction_id = generate_trx_id()
@@ -176,3 +272,18 @@ class AdminReferralSerializer(serializers.ModelSerializer):
             return user
         except AdminUser.DoesNotExist:
             raise serializers.ValidationError("User with this wallet address does not exist")
+        
+    def validate(self, attrs):
+        qp_wallet_address = self.context['request'].query_params.get(
+            'address')
+        if qp_wallet_address:
+            try:
+                admin_user = AdminUser.objects.get(
+                    wallet_address=qp_wallet_address)
+            except AdminUser.DoesNotExist:
+                raise ValidationError(
+                    "You don't have permission to perform this action.")
+            return attrs
+        else:
+            raise serializers.ValidationError(
+                "No admin wallet address added")
