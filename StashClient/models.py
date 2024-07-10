@@ -88,7 +88,8 @@ class Transaction(models.Model):
         ('Generated SubNode', 'Generated SubNode'),
         ('Stake & Swim Boost', 'Stake & Swim Boost'),
         ('ETH 2.0 Node', 'ETH 2.0 Node'),
-        ('Commission', 'Commission')
+        ('Commission', 'Commission'),
+        ('Claiming', 'Claiming')
     ]
 
     sender = models.ForeignKey(

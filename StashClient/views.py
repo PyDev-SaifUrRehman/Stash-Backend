@@ -1,19 +1,21 @@
 from datetime import timedelta
+from decimal import Decimal
 
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
+from django.db.models import Sum, F
 
 from rest_framework import filters, viewsets, status
-from rest_framework.decorators import action
 from rest_framework.mixins import ListModelMixin
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 
 from .models import ClientUser, Referral, Transaction
-from .serializers import ClientUserSerializer, ReferralSerializer, TransactionSerializer, ClientWalletDetialSerailizer
+from .serializers import ClientUserSerializer, ReferralSerializer, TransactionSerializer, ClientWalletDetialSerailizer, ClaimSerializer
 from .utils import generate_referral_code
-from StashAdmin.models import BaseUser, AdminUser, AdminReferral, NodePartner, NodeSetup, MasterNode
+from StashAdmin.models import BaseUser, AdminUser, NodePartner, NodeSetup, MasterNode
 from StashAdmin.serializers import NodeSetupSerializer
+
 
 
 class ClientUserViewSet(viewsets.ModelViewSet):
@@ -22,7 +24,6 @@ class ClientUserViewSet(viewsets.ModelViewSet):
 
 
     def create(self, request):
-        # ref_code = request.query_params.get('ref')
         ref_code = request.data.get('ref')
         print("reff", ref_code)
         if not ref_code:
@@ -56,16 +57,13 @@ class ClientUserViewSet(viewsets.ModelViewSet):
         except (ObjectDoesNotExist, ValueError):
             return Response({"detail": "User not found or invalid address"}, status=status.HTTP_404_NOT_FOUND)
         serializer = self.get_serializer(instance)
-        # instance.update_balance()
         try:
             referrals = Referral.objects.filter(user=instance)
             total_referred_users = referrals.aggregate(total_users=models.Sum('no_of_referred_users'))['total_users'] or 0
 
         except: 
             referrals = 0
-        # instance.update_balance()
         serializer_data = serializer.data
-        # node = NodeSetup.objects.filter(user = instance).count() or 0
         nodes = Transaction.objects.filter(transaction_type = 'ETH 2.0 Node').count()
         serializer_data['referral'] = total_referred_users
         serializer_data['total_nodes'] = nodes
@@ -153,7 +151,7 @@ class ReferralViewSet(viewsets.ModelViewSet):
 class ClaimViewSet(viewsets.ModelViewSet):
     queryset = Transaction.objects.all()
 
-    serializer_class = TransactionSerializer
+    serializer_class = ClaimSerializer
     filter_backends = [filters.SearchFilter, DjangoFilterBackend]
     filterset_fields = ['sender__wallet_address',
                         'sender__referred_by__user__wallet_address', 'transaction_type']
@@ -171,22 +169,16 @@ class ClaimViewSet(viewsets.ModelViewSet):
     def create(self, request):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        node = serializer.validated_data.get('node')
-        sender = serializer.validated_data.pop('sender')
-        # amount = serializer.validated_data.get('amount')
+        wallet_address = serializer.validated_data.get('wallet_address')
+        amount = serializer.validated_data.get('amount')
         node_quantity = serializer.validated_data.get('node_quantity')
-        # stake_swim_quantity = serializer.validated_data.get('stake_swim_quantity')
-        # supernode_quantity = serializer.validated_data.get('supernode_quantity')
+        
         transaction_type = serializer.validated_data.pop('transaction_type')
         # block_id = serializer.validated_data.get('block_id')
         node_id = serializer.validated_data.get('node_id')
-        # amount = (node_quantity * node.cost_per_node +
-        #           stake_swim_quantity * node.booster_node_1_cost +
-        #           supernode_quantity * node.booster_node_2_cost)
-        # print("amount", amount)
-        amount = node_quantity * node.cost_per_node
+        node = NodeSetup.objects.get(node_id = node_id)
 
-        sender = ClientUser.objects.get(id=sender.id)
+        sender = ClientUser.objects.get(wallet_address = wallet_address)
         if transaction_type == 'Claiming':
             
             try:
@@ -198,6 +190,7 @@ class ClaimViewSet(viewsets.ModelViewSet):
             master_node = MasterNode.objects.filter(node = node).order_by('-pk')[0]
 
             referred_by_referral_code = sender.referred_by.user.referral_code
+            print("masterrrr", master_node)
 
             if referred_by_referral_code == node.node_id:
                 print("admin reff")
@@ -211,7 +204,7 @@ class ClaimViewSet(viewsets.ModelViewSet):
                     client , created = ClientUser.objects.get_or_create(wallet_address = partner.partner_wallet_address)
                     partner_sender_object = ClientUser.objects.get(wallet_address = partner.partner_wallet_address)
                     Transaction.objects.create(sender=partner_sender_object, amount=claim_fee*partner.share/100, transaction_type='Reward Claim', **serializer.validated_data)
-                Transaction.objects.create(sender=sender, amount=node_quantity * node.cost_per_node, transaction_type='ETH 2.0 Node', **serializer.validated_data)
+                # Transaction.objects.create(sender=sender, amount=node_quantity * node.cost_per_node, transaction_type='ETH 2.0 Node', **serializer.validated_data)
                 Transaction.objects.create(sender=partner_sender_object, amount=amount, transaction_type='Generated SubNode', **serializer.validated_data)
             ### multiple nodes
             elif referred_by_referral_code == master_node.parent_node.master_node_id or (referred_by_referral_code == master_node.master_node_id and master_node.parent_node is None) :
@@ -255,16 +248,13 @@ class ClaimViewSet(viewsets.ModelViewSet):
                 Transaction.objects.create(sender=partner.partner_wallet_address, amount=amount, transaction_type='Generated SubNode')
                 master_wallet = AdminUser.objects.create(wallet_address = master_node.wallet_address, user_type = 'MasterNode')
                 master_wallet2 = AdminUser.objects.create(wallet_address = master_node.wallet_address, user_type = 'MasterNode')
-                
                 Transaction.objects.create(sender=master_node.wallet_address, amount=claim_fee*0.02, transaction_type='Reward Claim')
                 Transaction.objects.create(sender=master_node.wallet_address, amount=claim_fee*0.02, transaction_type='Reward Claim')
 
             return Response({"Admin type is excuted and partners is to credited"})
-
         return Response({"reward distributed"})
 
     
-from decimal import Decimal
 class TransactionViewset(viewsets.ModelViewSet):
     queryset = Transaction.objects.all()
     serializer_class = TransactionSerializer
@@ -285,67 +275,36 @@ class TransactionViewset(viewsets.ModelViewSet):
         node_quantity = serializer.validated_data.get('node_quantity')
         block_id = serializer.validated_data.get('block_id')
         setup_charges = serializer.validated_data.get('setup_charges')
-
-
+        server_type = serializer.validated_data.get('server_type')
+        trx_hash = serializer.validated_data.get('trx_hash')
         stake_swim_quantity = serializer.validated_data.get('stake_swim_quantity', 0)
         supernode_quantity = serializer.validated_data.get('supernode_quantity', 0)
         
-        
-        # print("qqq", type(Decimal(node_quantity)), type(node.cost_per_node))
-        # cost_per_node = node.cost_per_node if node.cost_per_node is not None else int(0)
-        # print(type(node_quantity), node_quantity, cost_per_node, type(cost_per_node))
-        # booster_node_1_cost = node.booster_node_1_cost if node.booster_node_1_cost is not None else int(0)
-        # booster_node_2_cost = node.booster_node_2_cost if node.booster_node_2_cost is not None else int(0)
-        
-        total_amount = node_quantity * node.cost_per_node
-        # total_amount = (node_quantity * cost_per_node +
-        #                 stake_swim_quantity * booster_node_1_cost +
-        #                 supernode_quantity * booster_node_2_cost + 
-        #                 setup_charges)
+        setup_charges = 100
+        total_amount_node = ((node_quantity * node.cost_per_node))
+        total_amount_stake = stake_swim_quantity * node.booster_node_1_cost if stake_swim_quantity else 0
+        total_amount_super = supernode_quantity * node.booster_node_2_cost if supernode_quantity else 0
 
-
-        # total_amount = (node_quantity * node.cost_per_node +
-        #           stake_swim_quantity * node.booster_node_1_cost +
-        #           supernode_quantity * node.booster_node_2_cost + setup_charges)
-        print("amount", amount)
-
-        # if user_referral_tpye == 'MasterNode':
-            # referral_commission = amount * commission_percentage/100
-            # Transaction.objects.create(sender=user_referral, amount=commission_amount, transaction_type='Commission Earned')
-            
+        total_amount = total_amount_node + total_amount_stake + total_amount_super + setup_charges
+      
         node_id = serializer.validated_data.get('node_id')
         node = serializer.validated_data.get('node')
-        referral_commission = amount * node.node_commission_percentage/100
+        referral_commission = total_amount_node * node.node_commission_percentage/100
         master_node = MasterNode.objects.filter(node = node).order_by('-pk')[0]
-
-        # try:
-        #     if not master_node.parent_node:
-        #         master_node1id = master_node.master_node_id
-        #     elif master_node.parent_node:
-        #         master_node1id = master_node.parent_node.master_node_id
-        #         master_node2id = master_node.master_node_id
-        # except:
-        #     return Response({"Message": "No master node found...."})
 
         referred_by_user = sender.referred_by.user
         if referred_by_user.user_type == 'Client':
-            referral_commission = amount * 10 / 100 
-            print("client type", referral_commission )
+            referral_commission = total_amount_node * 10 / 100 
 
         elif referred_by_user.user_type == 'MasterNode':
             if master_node.master_node_id == referral.master_node_id:
-                referral_commission = amount * 5 / 100 
-                print("master node direct type", referral_commission )
-
+                referral_commission = total_amount_node * 5 / 100 
 
             elif master_node.parent_node and master_node.parent_node.master_node_id == referral.master_node_id:
-                referral_commission = amount * 5 / 100  
-                print("master node direct type", referral_commission )
+                referral_commission = total_amount_node * 5 / 100  
 
         elif referred_by_user.user_type == 'Admin':
-            referral_commission = amount * 10 / 100 
-            print("admin type", referral_commission )
-
+            referral_commission = total_amount_node * 10 / 100 
 
         if transaction_type == 'ETH 2.0 Node':
             if sender.referred_by and sender.referred_by.commission_received == False:
@@ -368,16 +327,18 @@ class TransactionViewset(viewsets.ModelViewSet):
                         block_id = block_id,
                         node_id = node_id,
                         node = node,
+                        server_type = server_type,
+                        trx_hash = trx_hash
                     )
                     
                     referral.commission_transactions = commission_transaction
                     referral.user.claimed_reward += referral_commission
                     referral.save()
-                    serializer.save(amount = amount)
-                    sender.maturity += amount*2
+                    serializer.save(amount = total_amount_node)
+                    sender.maturity += total_amount*2
                     if referred_by_user.user_type == 'Client':
                         sender.referred_by.mark_commission_received()
-                    sender.total_deposit += amount
+                    sender.total_deposit += total_amount
                     sender.save()
 
                 elif referred_by_maturity - referred_by_user.claimed_reward < referral_commission and referred_by_maturity- referred_by_user.claimed_reward != 0:
@@ -394,43 +355,44 @@ class TransactionViewset(viewsets.ModelViewSet):
                         block_id = block_id,
                         node_id = node_id,
                         node = node,
+                        server_type = server_type,
+                        trx_hash = trx_hash
 
                     )
                     referral.commission_transactions = commission_transaction
                     referral.save()
-                    serializer.save(amount = amount)
-                    sender.maturity += amount*2
-                    sender.total_deposit += amount
+                    serializer.save(amount = total_amount_node)
+                    sender.maturity += total_amount*2
+                    sender.total_deposit += total_amount
                     if referred_by_user.user_type == 'Client':
                         sender.referred_by.mark_commission_received()
                     sender.save()
-                    print("4")
                 
                 else:
                     sender.maturity += total_amount*2
                     sender.total_deposit += total_amount
                     sender.save()
-                    serializer.save(amount = amount)
+                    serializer.save(amount = total_amount_node)
 
             else:
                 sender.maturity += total_amount*2
                 sender.total_deposit += total_amount
                 sender.save()
-                serializer.save(amount = amount)
+                serializer.save(amount = total_amount_node)
             if supernode_quantity:
-                Transaction.objects.create(sender=sender, amount=supernode_quantity * node.booster_node_2_cost, transaction_type='SuperNode Boost', block_id = block_id, node_id = node_id,node = node, supernode_quantity = supernode_quantity)
+                Transaction.objects.create(sender=sender, amount=total_amount_super, transaction_type='SuperNode Boost', block_id = block_id, node_id = node_id,node = node, supernode_quantity = supernode_quantity, server_type = server_type,
+                        trx_hash = trx_hash)
             if stake_swim_quantity:
-                Transaction.objects.create(sender=sender, amount=stake_swim_quantity * node.booster_node_1_cost, transaction_type='Stake & Swim Boost', node_id = node_id,block_id = block_id, node = node, stake_swim_quantity = stake_swim_quantity)
+                Transaction.objects.create(sender=sender, amount=total_amount_stake, transaction_type='Stake & Swim Boost', node_id = node_id,block_id = block_id, node = node, stake_swim_quantity = stake_swim_quantity,server_type = server_type,
+                        trx_hash = trx_hash)
 
-        return super().create(request, *args, **kwargs)
-
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class ServerInformationViewset(viewsets.GenericViewSet, ListModelMixin):
 
     def list(self, request, *args, **kwargs):
         try:
-
             node = NodeSetup.objects.all()[-1]
             node_id = node.node_id
             transactions = Transaction.objects.all()
@@ -441,14 +403,6 @@ class ServerInformationViewset(viewsets.GenericViewSet, ListModelMixin):
             return Response({"detail": "No node found"}, status=status.HTTP_404_NOT_FOUND)
 
 
-# class NodePerformanceViewset(viewsets.GenericViewSet, ListModelMixin):
-
-#     def list(self, request, *args, **kwargs):
-#         generated_reward = 
-#         return super().list(request, *args, **kwargs)
-
-
-
 class AuthorizedNodeViewset(viewsets.ModelViewSet):
     queryset = NodeSetup.objects.all()  
     serializer_class = NodeSetupSerializer
@@ -456,18 +410,12 @@ class AuthorizedNodeViewset(viewsets.ModelViewSet):
     def list(self, request, *args, **kwargs):
         try:
             node_id = request.query_params.get('node')
-            print(node_id)
             node = NodeSetup.objects.filter(node_id = node_id)
-            print("aaaaa", node)
             serializer = NodeSetupSerializer(node, many = True)
-            # serializer = self.get_serializer(node)
-            print("aaaaa")
             return Response(serializer.data, status=status.HTTP_200_OK)
         except:
             return Response({"detail": "Node not found"}, status=status.HTTP_404_NOT_FOUND)
-        # return super().list(request, *args, **kwargs)
 
-from django.db.models import Sum, F
 class ExhaustedNodeViewset(viewsets.ModelViewSet):
     queryset = ClientUser.objects.all()
     serializer_class = ClientUserSerializer

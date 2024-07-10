@@ -19,5 +19,4 @@ router.register(r'exhausted-node', ExhaustedNodeViewset, basename='exhausted')
 router.register(r'sub-node', GeneratedSubNodesViewset, basename='gen-sub-node')
 
 
-
 urlpatterns = router.urls

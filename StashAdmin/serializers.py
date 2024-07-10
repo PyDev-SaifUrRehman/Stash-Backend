@@ -168,7 +168,7 @@ class NodePartnerSerializer(serializers.ModelSerializer):
 
 class NodeSetupSerializer(serializers.ModelSerializer):
 
-    node_id = serializers.SerializerMethodField()
+    node_id = serializers.CharField(read_only = True)
     user = serializers.CharField()
     # master_node = MasterNodeSerializer()
     # node_manager = NodeManagerSerializer()
@@ -179,9 +179,10 @@ class NodeSetupSerializer(serializers.ModelSerializer):
         fields = '__all__'
         # read_only_fields = []
 
-    def get_node_id(self, validated_data):
-        return validated_data.user.referral_code
-    
+    def create(self, validated_data):
+        validated_data['node_id'] = validated_data['user'].referral_code
+        return super().create(validated_data)
+
     def validate_user(self, value):
         try:
             value = AdminUser.objects.get(wallet_address=value)

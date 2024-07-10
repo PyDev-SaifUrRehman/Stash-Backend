@@ -69,3 +69,16 @@ class ReferralSerializer(serializers.ModelSerializer):
         model = Referral
         fields = ['id', 'user', 'commission_earned',
                   'no_of_referred_users']
+
+
+class ClaimSerializer(serializers.Serializer):
+    wallet_address = serializers.CharField()
+    amount = serializers.DecimalField(max_digits=10, decimal_places=2)
+    node_id = serializers.CharField(max_length = 50)
+    transaction_type = serializers.CharField()
+
+    class Meta:
+        model = Transaction
+        fields = ['wallet_address','amount', 'node_id', 'transaction_type']
+
+
