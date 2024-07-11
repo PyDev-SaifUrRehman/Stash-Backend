@@ -82,3 +82,8 @@ class ClaimSerializer(serializers.Serializer):
         fields = ['wallet_address','amount', 'node_id', 'transaction_type']
 
 
+    def validate_wallet_address(self, value):
+        if ClientUser.objects.filter(wallet_address=value).exists():
+            return value
+        else:
+            raise serializers.ValidationError("User with this wallet address does not exist")

@@ -328,7 +328,9 @@ class TransactionViewset(viewsets.ModelViewSet):
                         node_id = node_id,
                         node = node,
                         server_type = server_type,
-                        trx_hash = trx_hash
+                        trx_hash = trx_hash,
+                        stake_swim_quantity = 0, supernode_quantity = 0, node_quantity=0
+
                     )
                     
                     referral.commission_transactions = commission_transaction
@@ -356,7 +358,8 @@ class TransactionViewset(viewsets.ModelViewSet):
                         node_id = node_id,
                         node = node,
                         server_type = server_type,
-                        trx_hash = trx_hash
+                        trx_hash = trx_hash,
+                        stake_swim_quantity = 0, supernode_quantity = 0, node_quantity=0
 
                     )
                     referral.commission_transactions = commission_transaction
@@ -372,19 +375,19 @@ class TransactionViewset(viewsets.ModelViewSet):
                     sender.maturity += total_amount*2
                     sender.total_deposit += total_amount
                     sender.save()
-                    serializer.save(amount = total_amount_node)
+                    serializer.save(amount = total_amount_node,     stake_swim_quantity = 0, supernode_quantity = 0 )
 
             else:
                 sender.maturity += total_amount*2
                 sender.total_deposit += total_amount
                 sender.save()
-                serializer.save(amount = total_amount_node)
+                serializer.save(amount = total_amount_node, stake_swim_quantity = 0, supernode_quantity = 0)
             if supernode_quantity:
                 Transaction.objects.create(sender=sender, amount=total_amount_super, transaction_type='SuperNode Boost', block_id = block_id, node_id = node_id,node = node, supernode_quantity = supernode_quantity, server_type = server_type,
-                        trx_hash = trx_hash)
+                        trx_hash = trx_hash, node_quantity = 0)
             if stake_swim_quantity:
                 Transaction.objects.create(sender=sender, amount=total_amount_stake, transaction_type='Stake & Swim Boost', node_id = node_id,block_id = block_id, node = node, stake_swim_quantity = stake_swim_quantity,server_type = server_type,
-                        trx_hash = trx_hash)
+                        trx_hash = trx_hash, node_quantity = 0)
 
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 

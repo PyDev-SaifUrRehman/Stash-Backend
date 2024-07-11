@@ -55,7 +55,7 @@ class Referral(models.Model):
     user = models.ForeignKey(
         ClientUser, on_delete=models.CASCADE, related_name='referral')
     commission_transactions = models.ForeignKey(
-        'Transaction', on_delete=models.CASCADE, blank=True, null=True, related_name='referral_trx')
+        'Transaction', on_delete=models.SET_NULL, blank=True, null=True, related_name='referral_trx')
     no_of_referred_users = models.PositiveIntegerField(default=0)
     commission_earned = models.DecimalField(
         max_digits=14, decimal_places=2, default=0)
