@@ -40,6 +40,7 @@ class TransactionSerializer(serializers.ModelSerializer):
         queryset=ClientUser.objects.all())
     supernode_quantity = serializers.IntegerField(default = 0)
     stake_swim_quantity = serializers.IntegerField(default = 0)
+    node = serializers.CharField()
     
     # amount = serializers.SerializerMethodField()
     # node = NodeSetupSerializer()
@@ -48,6 +49,17 @@ class TransactionSerializer(serializers.ModelSerializer):
         model = Transaction
         fields = ['sender', 'transaction_type','amount', 'trx_hash', 'server_type', 'timestamp', 'supernode_quantity', 'stake_swim_quantity', 'node_quantity', 'node', 'block_id']
         read_only_fields = ['amount']
+
+    def validate_node(self, value):
+        try:
+            node = NodeSetup.objects.get(node_id = value)
+            if node:
+                return node
+        except:
+            raise serializers.ValidationError("No node with this Id")
+    
+    
+
     # def get_amount(self, validated_data):
     #     node = validated_data["node"]
     #     node_quantity = validated_data.get('node_quantity')

@@ -127,6 +127,7 @@ class AdminNodeOverview(viewsets.ModelViewSet):
 
         total_eth2_nodes_count = Transaction.objects.filter(transaction_type = 'ETH 2.0 Node').count() or 0
         stake_swim_boostcount = Transaction.objects.filter(transaction_type = 'Stake & Swim Boost').count() or 0
+        total_super_nodes_count = Transaction.objects.filter(transaction_type = 'SuperNode Boost').count() or 0
         total_setup_fee = Transaction.objects.filter(transaction_type = 'ETH 2.0 Node').aggregate(setup_charges = models.Sum('setup_charges'))['setup_charges'] or 0
         total_super_nodes_count = 0
         # active_nodes_balance = 0  #node amount that are not exausted, mean maturity - withdrawal == 0 users

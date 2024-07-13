@@ -12,20 +12,20 @@ class AdminUserSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ['referral_code', 'referred_by']
 
-    def validate(self, attrs):
-        qp_wallet_address = self.context['request'].query_params.get(
-            'address')
-        if qp_wallet_address:
-            try:
-                admin_user = AdminUser.objects.get(
-                    wallet_address=qp_wallet_address)
-            except AdminUser.DoesNotExist:
-                raise ValidationError(
-                    "You don't have permission to perform this action.")
-            return attrs
-        else:
-            raise serializers.ValidationError(
-                "No admin wallet address added")
+    # def validate(self, attrs):
+    #     qp_wallet_address = self.context['request'].query_params.get(
+    #         'address')
+    #     if qp_wallet_address:
+    #         try:
+    #             admin_user = AdminUser.objects.get(
+    #                 wallet_address=qp_wallet_address)
+    #         except AdminUser.DoesNotExist:
+    #             raise ValidationError(
+    #                 "You don't have permission to perform this action.")
+    #         return attrs
+    #     else:
+    #         raise serializers.ValidationError(
+    #             "No admin wallet address added")
 
 
 class ParentMasterNodeSerializer(serializers.ModelSerializer):

@@ -60,6 +60,7 @@ class ClientUserViewSet(viewsets.ModelViewSet):
         try:
             referrals = Referral.objects.filter(user=instance)
             total_referred_users = referrals.aggregate(total_users=models.Sum('no_of_referred_users'))['total_users'] or 0
+            total_commission_earned = referrals.aggregate(total_commission=models.Sum('commission_earned'))['total_commission'] or 0
 
         except: 
             referrals = 0
@@ -67,6 +68,8 @@ class ClientUserViewSet(viewsets.ModelViewSet):
         nodes = Transaction.objects.filter(transaction_type = 'ETH 2.0 Node').count()
         serializer_data['referral'] = total_referred_users
         serializer_data['total_nodes'] = nodes
+        serializer_data['generated_subnode_reward'] = total_commission_earned
+
         return Response(serializer_data, status=status.HTTP_200_OK)        
 
 
@@ -208,7 +211,7 @@ class ClaimViewSet(viewsets.ModelViewSet):
                 Transaction.objects.create(sender=partner_sender_object, amount=amount, transaction_type='Generated SubNode', **serializer.validated_data)
             ### multiple nodes
             elif referred_by_referral_code == master_node.parent_node.master_node_id or (referred_by_referral_code == master_node.master_node_id and master_node.parent_node is None) :
-                print('multiple master node but with masternode 1') 
+                print('Masternode 1 claim') 
                 master_node = MasterNode.objects.filter(node = node).order_by('-pk')[0]
                 print("master node", master_node.pk)
                 master_claim_fee_per = master_node.claim_fee_percentage
