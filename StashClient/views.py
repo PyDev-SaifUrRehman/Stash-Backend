@@ -11,17 +11,19 @@ from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 
 from .models import ClientUser, Referral, Transaction
-from .serializers import ClientUserSerializer, ReferralSerializer, TransactionSerializer, ClientWalletDetialSerailizer, ClaimSerializer
+from .serializers import ClientUserSerializer, ReferralSerializer, TransactionSerializer, ClientWalletDetialSerailizer, ClaimSerializer, NodePassAuthorizedSerializer
 from .utils import generate_referral_code
 from StashAdmin.models import BaseUser, AdminUser, NodePartner, NodeSetup, MasterNode
 from StashAdmin.serializers import NodeSetupSerializer
+import requests
+from StashBackend.settings import api_key
 
 
 
 class ClientUserViewSet(viewsets.ModelViewSet):
     queryset = ClientUser.objects.all()
     serializer_class = ClientUserSerializer
-
+    lookup_field = 'wallet_address'
 
     def create(self, request):
         # ref_code = request.data.get('ref')
@@ -42,11 +44,14 @@ class ClientUserViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save(referral_code=new_user_referral_code)
-        user.referred_by = referral
-        user.save()
-        referral.increase_referred_users()
+        # user.referred_by = referral
+        # user.save()
+        # referral.increase_referred_users()
         serializer_data = serializer.data
-        serializer_data['referral_address'] = user.referred_by.user.wallet_address
+        # try:
+
+        # serializer_data['referral_address'] = user.referred_by.user.wallet_address
+        # serializer_data['referred_user_code'] = user.referred_by.user.referral_code
         return Response(serializer_data, status=status.HTTP_201_CREATED)
 
     def list(self, request, *args, **kwargs):
@@ -423,8 +428,8 @@ class ServerInformationViewset(viewsets.GenericViewSet, ListModelMixin):
 
 
 class AuthorizedNodeViewset(viewsets.ModelViewSet):
-    queryset = NodeSetup.objects.all()  
-    serializer_class = NodeSetupSerializer
+    queryset = ClientUser.objects.all()  
+    serializer_class = NodePassAuthorizedSerializer
 
     def create(self, request, *args, **kwargs):
         # try:
@@ -434,9 +439,9 @@ class AuthorizedNodeViewset(viewsets.ModelViewSet):
         #     return Response(serializer.data, status=status.HTTP_200_OK)
         # except:
         #     return Response({"detail": "Node not found"}, status=status.HTTP_404_NOT_FOUND)
-
-        ref_code = request.data.get('referral_code')
-        user_wallet_address = request.data.get('user_wallet_address')
+        serializer = self.get_serializer(data = request.data)
+        ref_code = serializer.validated_data.get('referral_code')
+        user_wallet_address = serializer.validated_data.get('user_wallet_address')
         print("reff", ref_code)
         if not ref_code:
             return Response({"error": "Licensed node pass is required"}, status=status.HTTP_400_BAD_REQUEST)
@@ -451,7 +456,6 @@ class AuthorizedNodeViewset(viewsets.ModelViewSet):
         except ClientUser.DoesNotExist:
             return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
-
         try:
             user = ClientUser.objects.get(wallet_address = user_wallet_address)
         except ClientUser.DoesNotExist:
@@ -464,8 +468,6 @@ class AuthorizedNodeViewset(viewsets.ModelViewSet):
         return Response("Liscenced Node is authorized")
         
         
-
-
 class ExhaustedNodeViewset(viewsets.ModelViewSet):
     queryset = ClientUser.objects.all()
     serializer_class = ClientUserSerializer
@@ -496,4 +498,19 @@ class GeneratedSubNodesViewset(viewsets.ModelViewSet):
         total_revenue = Transaction.objects.filter(transaction_type = 'Generated SubNode').aggregate(total_generated_trxs = Sum('amount'))['total_generated_trxs'] or 0
         serializer = self.get_serializer(generated_trxs, many = True)
         return Response({'generated_trxs': serializer.data, 'total_subnodes': total_subnodes, 'total_revenue': total_revenue})
+        
+
+class EthereumDataVewiset(viewsets.GenericViewSet, ListModelMixin):
+    def list(self, request, *args, **kwargs):
+        api = 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest?symbol=ETH'
+        headers = {
+            "X-CMC_PRO_API_KEY": api_key,
+            }
+        try:
+            response = requests.get(url = api, headers = headers)
+        except Exception as e:
+            return Response({"detail": str(e) + "Unable to fetch Ethereum data"}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(response, status=status.HTTP_200_OK)
+        
         

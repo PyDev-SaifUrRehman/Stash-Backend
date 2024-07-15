@@ -1,5 +1,5 @@
 from rest_framework.routers import DefaultRouter
-from .views import ClientUserViewSet, ReferralViewSet, ClaimViewSet, ClientWalletDetialViewset, UserLoginViewset, GetRefAdressViewset, ServerInformationViewset, TransactionViewset, AuthorizedNodeViewset, ExhaustedNodeViewset, GeneratedSubNodesViewset
+from .views import ClientUserViewSet, ReferralViewSet, ClaimViewSet, ClientWalletDetialViewset, UserLoginViewset, GetRefAdressViewset, ServerInformationViewset, TransactionViewset, AuthorizedNodeViewset, ExhaustedNodeViewset, GeneratedSubNodesViewset, EthereumDataVewiset
 
 router = DefaultRouter()
 
@@ -17,6 +17,7 @@ router.register(r'transactions', TransactionViewset, basename='comm')
 router.register(r'node-auth', AuthorizedNodeViewset, basename='node-auth')
 router.register(r'exhausted-node', ExhaustedNodeViewset, basename='exhausted')
 router.register(r'sub-node', GeneratedSubNodesViewset, basename='gen-sub-node')
+router.register(r'eth-data', EthereumDataVewiset, basename='eth-data')
 
 
 urlpatterns = router.urls
