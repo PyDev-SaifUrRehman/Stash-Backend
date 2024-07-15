@@ -21,6 +21,7 @@ class NodeSetupViewset(viewsets.ModelViewSet):
 class AdminUserViewset(viewsets.ModelViewSet):
     queryset = AdminUser.objects.all()
     serializer_class = AdminUserSerializer
+    lookup_field = 'wallet_address'
     def create(self, request):
         ref_code = request.data.get('ref')
 

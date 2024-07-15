@@ -41,13 +41,14 @@ class TransactionSerializer(serializers.ModelSerializer):
     supernode_quantity = serializers.IntegerField(default = 0)
     stake_swim_quantity = serializers.IntegerField(default = 0)
     node = serializers.CharField()
+    node_id = serializers.CharField(read_only = True)
     
     # amount = serializers.SerializerMethodField()
     # node = NodeSetupSerializer()
 
     class Meta:
         model = Transaction
-        fields = ['sender', 'transaction_type','amount', 'trx_hash', 'server_type', 'timestamp', 'supernode_quantity', 'stake_swim_quantity', 'node_quantity', 'node', 'block_id']
+        fields = ['sender','node_id', 'transaction_type','amount', 'trx_hash', 'server_type', 'timestamp', 'supernode_quantity', 'stake_swim_quantity', 'node_quantity', 'node', 'block_id']
         read_only_fields = ['amount']
 
     def validate_node(self, value):
@@ -57,6 +58,15 @@ class TransactionSerializer(serializers.ModelSerializer):
                 return node
         except:
             raise serializers.ValidationError("No node with this Id")
+        
+    def get_node_id(self, validated_data):
+        print("asdadfsa")
+        node = validated_data["node"]
+        node = NodeSetup.objects.get(node_id = node)
+
+        print("node",node.node_id )
+        
+        return node.node_id
     
     
 
@@ -84,17 +94,17 @@ class ReferralSerializer(serializers.ModelSerializer):
 
 
 class ClaimSerializer(serializers.Serializer):
-    wallet_address = serializers.CharField()
+    sender = serializers.CharField()
     amount = serializers.DecimalField(max_digits=10, decimal_places=2)
     node_id = serializers.CharField(max_length = 50)
     transaction_type = serializers.CharField()
 
     class Meta:
         model = Transaction
-        fields = ['wallet_address','amount', 'node_id', 'transaction_type']
+        fields = ['sender','amount', 'node_id', 'transaction_type']
 
 
-    def validate_wallet_address(self, value):
+    def validate_sender(self, value):
         if ClientUser.objects.filter(wallet_address=value).exists():
             return value
         else:

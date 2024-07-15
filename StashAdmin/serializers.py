@@ -165,7 +165,6 @@ class NodePartnerSerializer(serializers.ModelSerializer):
                 "No admin wallet address added")
 
 
-
 class NodeSetupSerializer(serializers.ModelSerializer):
 
     node_id = serializers.CharField(read_only = True)

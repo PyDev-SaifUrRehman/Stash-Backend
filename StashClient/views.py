@@ -62,12 +62,15 @@ class ClientUserViewSet(viewsets.ModelViewSet):
             total_referred_users = referrals.aggregate(total_users=models.Sum('no_of_referred_users'))['total_users'] or 0
             total_commission_earned = referrals.aggregate(total_commission=models.Sum('commission_earned'))['total_commission'] or 0
 
+
         except: 
             referrals = 0
         serializer_data = serializer.data
-        nodes = Transaction.objects.filter(transaction_type = 'ETH 2.0 Node').count()
+        nodes = Transaction.objects.filter(sender = instance, transaction_type = 'ETH 2.0 Node').count()
+        generated_subnodes = Transaction.objects.filter(sender = instance, transaction_type = 'Generated SubNode' ).count()
         serializer_data['referral'] = total_referred_users
         serializer_data['total_nodes'] = nodes
+        serializer_data['total_generated_subnodes'] = generated_subnodes
         serializer_data['generated_subnode_reward'] = total_commission_earned
 
         return Response(serializer_data, status=status.HTTP_200_OK)        
@@ -256,6 +259,16 @@ class ClaimViewSet(viewsets.ModelViewSet):
 
             return Response({"Admin type is excuted and partners is to credited"})
         return Response({"reward distributed"})
+    
+    def list(self, request, *args, **kwargs):
+        wallet_address = request.query_params.get('walletadd')
+        try:
+            sender = ClientUser.objects.get(wallet_address = wallet_address)
+        except:
+            return Response({"Message": "Invalid wallet address...."})
+        total_revenue = Transaction.objects.filter(sender = sender,transaction_type = 'Generated SubNode').aggregate(total_generated_trxs = Sum('amount'))['total_generated_trxs'] or 0
+
+        return Response({"total_revenue":total_revenue}, status=status.HTTP_200_OK)
 
     
 class TransactionViewset(viewsets.ModelViewSet):
@@ -430,14 +443,17 @@ class ExhaustedNodeViewset(viewsets.ModelViewSet):
         try:
             exhausted_users = ClientUser.objects.filter(maturity=F('claimed_reward'))
             print("exhausted user", exhausted_users)
-            eth_node_sum = Transaction.objects.filter(sender__in=exhausted_users, transaction_type='ETH 2.0 Node').aggregate(node_quantity = Sum('node_quantity'))['node_quantity'] or 0
+            transactions_list = Transaction.objects.filter(sender__in=exhausted_users, transaction_type='ETH 2.0 Node')
+            eth_node_sum = transactions_list.aggregate(node_quantity = Sum('node_quantity'))['node_quantity'] or 0
             stake_boost_sum = Transaction.objects.filter(sender__in=exhausted_users, transaction_type='Stake & Swim Boost').aggregate(stake_swim_quantity = Sum('stake_swim_quantity'))['stake_swim_quantity'] or 0
             super_boost_sum = Transaction.objects.filter(sender__in=exhausted_users, transaction_type='SuperNode Boost').aggregate(supernode_quantity = Sum('supernode_quantity'))['supernode_quantity'] or 0
-            
-            return Response({'eth_node_sum': eth_node_sum, 'stake_boost_sum': stake_boost_sum,'super_boost_sum': super_boost_sum })
+            revenue_generated = Transaction.objects.filter(sender__in = exhausted_users, transaction_type = 'ETH 2.0 Node').aggregate(amount = Sum('amount'))['amount'] or 0
+            timestamp = transactions_list.first().timestamp
+            print(eth_node_sum)
+            return Response({'eth_node_sum': eth_node_sum, 'stake_boost_sum': stake_boost_sum,'super_boost_sum': super_boost_sum, 'revenue_generated': revenue_generated, 'timestamp': timestamp})
         except:
             return Response({"detail": "No exhausted nodes found"}, status=status.HTTP_404_NOT_FOUND)
-        
+
 
 class GeneratedSubNodesViewset(viewsets.ModelViewSet):
     queryset = Transaction.objects.filter(transaction_type = 'Generated SubNode')
