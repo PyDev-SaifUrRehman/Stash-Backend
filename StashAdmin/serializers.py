@@ -200,9 +200,7 @@ class NodeSetupSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         qp_wallet_address = self.context['request'].query_params.get(
             'address')
-        node = NodeSetup.objects.get(pk = 1)
-        if node:
-            raise serializers.ValidationError("Node already setup")
+        
         if qp_wallet_address:
             try:
                 admin_user = AdminUser.objects.get(
@@ -214,7 +212,8 @@ class NodeSetupSerializer(serializers.ModelSerializer):
         else:
             raise serializers.ValidationError(
                 "No admin wallet address added")
-        
+    
+    
 
 
     # def create(self, validated_data):

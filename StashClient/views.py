@@ -499,7 +499,7 @@ class GeneratedSubNodesViewset(viewsets.ModelViewSet):
         serializer = self.get_serializer(generated_trxs, many = True)
         return Response({'generated_trxs': serializer.data, 'total_subnodes': total_subnodes, 'total_revenue': total_revenue})
         
-
+from django.http.response import HttpResponse
 class EthereumDataVewiset(viewsets.GenericViewSet, ListModelMixin):
     def list(self, request, *args, **kwargs):
         api = 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest?symbol=ETH'
@@ -510,7 +510,6 @@ class EthereumDataVewiset(viewsets.GenericViewSet, ListModelMixin):
             response = requests.get(url = api, headers = headers)
         except Exception as e:
             return Response({"detail": str(e) + "Unable to fetch Ethereum data"}, status=status.HTTP_400_BAD_REQUEST)
-
-        return Response(response, status=status.HTTP_200_OK)
+        return HttpResponse(response._content, status=status.HTTP_200_OK)
         
         
