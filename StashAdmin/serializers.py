@@ -200,7 +200,14 @@ class NodeSetupSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         qp_wallet_address = self.context['request'].query_params.get(
             'address')
+        # try:
+        node = NodeSetup.objects.first()
+        print("node", node)
+        if node:
+            raise ValidationError("Node already found")
         
+        # except:
+            # raise ValidationError("Node not found")
         if qp_wallet_address:
             try:
                 admin_user = AdminUser.objects.get(

@@ -156,3 +156,12 @@ class AdminNodeOverview(viewsets.ModelViewSet):
 
         return Response({'total_eth2_nodes_count': total_eth2_nodes_count, 'stake_swim_boostcount': stake_swim_boostcount, 'total_setup_fee' : total_setup_fee, 'total_super_nodes_count' : total_super_nodes_count, 'active_nodes_balance':active_nodes_balance,'current_reward_balance':current_reward_balance, 'node_pass_revenue' :node_pass_revenue, 'total_revenue': total_revenue })
 
+
+class AdminClaimViewset(viewsets.ModelViewSet):
+
+    def list(self, request, *args, **kwargs):
+        active_nodes_balance = ClientUser.objects.exclude(maturity=F('claimed_reward')).aggregate(amount=Sum('total_deposit'))['amount'] or 0
+        claim_rewards = Transaction.objects.filter(transaction_type='Reward Claim').aggregate(amount=Sum('amount'))['amount'] or 0
+        # current_net_balance = 
+        return Response({'active_nodes_balance': active_nodes_balance, 'claim_rewards': claim_rewards})
+        return super().list(request, *args, **kwargs)

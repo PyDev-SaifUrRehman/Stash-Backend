@@ -428,7 +428,7 @@ class ServerInformationViewset(viewsets.GenericViewSet, ListModelMixin):
 
 
 class AuthorizedNodeViewset(viewsets.ModelViewSet):
-    queryset = ClientUser.objects.all()  
+    # queryset = ClientUser.objects.all()  
     serializer_class = NodePassAuthorizedSerializer
 
     def create(self, request, *args, **kwargs):
@@ -440,6 +440,7 @@ class AuthorizedNodeViewset(viewsets.ModelViewSet):
         # except:
         #     return Response({"detail": "Node not found"}, status=status.HTTP_404_NOT_FOUND)
         serializer = self.get_serializer(data = request.data)
+        serializer.is_valid(raise_exception=True)
         ref_code = serializer.validated_data.get('referral_code')
         user_wallet_address = serializer.validated_data.get('user_wallet_address')
         print("reff", ref_code)
@@ -465,7 +466,7 @@ class AuthorizedNodeViewset(viewsets.ModelViewSet):
         user.save()
         referral.increase_referred_users()
 
-        return Response("Liscenced Node is authorized")
+        return Response("Liscenced Node is authorized", status=status.HTTP_200_OK)
         
         
 class ExhaustedNodeViewset(viewsets.ModelViewSet):
