@@ -269,7 +269,6 @@ class AdminReferralSerializer(serializers.ModelSerializer):
                   'no_of_referred_users']
 
 
-
     def validate_user(self, value):
         try:
             user = AdminUser.objects.get(wallet_address=value)

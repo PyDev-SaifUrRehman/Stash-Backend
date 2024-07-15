@@ -59,15 +59,10 @@ class TransactionSerializer(serializers.ModelSerializer):
         except:
             raise serializers.ValidationError("No node with this Id")
         
-    def get_node_id(self, validated_data):
-        print("asdadfsa")
-        node = validated_data["node"]
-        node = NodeSetup.objects.get(node_id = node)
-
-        print("node",node.node_id )
-        
-        return node.node_id
-    
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        representation['node_id'] = instance.node.node_id if instance.node else None
+        return representation
     
 
     # def get_amount(self, validated_data):
