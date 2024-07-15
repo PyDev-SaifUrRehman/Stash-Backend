@@ -12,6 +12,14 @@ class AdminUserSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ['referral_code', 'referred_by']
 
+
+    def validate_wallet_address(self, value):
+        if AdminUser.objects.filter(wallet_address=value).exists():
+            raise serializers.ValidationError("Address already registered!!")
+        return value
+
+
+
     # def validate(self, attrs):
     #     qp_wallet_address = self.context['request'].query_params.get(
     #         'address')

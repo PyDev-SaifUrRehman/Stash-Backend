@@ -24,20 +24,20 @@ class ClientUserViewSet(viewsets.ModelViewSet):
 
 
     def create(self, request):
-        ref_code = request.data.get('ref')
-        print("reff", ref_code)
-        if not ref_code:
-            return Response({"error": "Referral code is required"}, status=status.HTTP_400_BAD_REQUEST)
-        try:
-            user_with_referral_code = ClientUser.objects.get(
-                referral_code=ref_code)
-            try:
-                referral = Referral.objects.create(
-                    user=user_with_referral_code)
-            except Referral.DoesNotExist:
-                return Response({"error": "Error to create ref."}, status=status.HTTP_400_BAD_REQUEST)
-        except ClientUser.DoesNotExist:
-            return Response({"error": "Invalid referral code"}, status=status.HTTP_400_BAD_REQUEST)
+        # ref_code = request.data.get('ref')
+        # print("reff", ref_code)
+        # if not ref_code:
+        #     return Response({"error": "Referral code is required"}, status=status.HTTP_400_BAD_REQUEST)
+        # try:
+        #     user_with_referral_code = ClientUser.objects.get(
+        #         referral_code=ref_code)
+        #     try:
+        #         referral = Referral.objects.create(
+        #             user=user_with_referral_code)
+        #     except Referral.DoesNotExist:
+        #         return Response({"error": "Error to create ref."}, status=status.HTTP_400_BAD_REQUEST)
+        # except ClientUser.DoesNotExist:
+        #     return Response({"error": "Invalid referral code"}, status=status.HTTP_400_BAD_REQUEST)
         new_user_referral_code = generate_referral_code()
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -426,14 +426,45 @@ class AuthorizedNodeViewset(viewsets.ModelViewSet):
     queryset = NodeSetup.objects.all()  
     serializer_class = NodeSetupSerializer
 
-    def list(self, request, *args, **kwargs):
+    def create(self, request, *args, **kwargs):
+        # try:
+        #     node_id = request.query_params.get('node')
+        #     node = NodeSetup.objects.filter(node_id = node_id)
+        #     serializer = NodeSetupSerializer(node, many = True)
+        #     return Response(serializer.data, status=status.HTTP_200_OK)
+        # except:
+        #     return Response({"detail": "Node not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        ref_code = request.data.get('referral_code')
+        user_wallet_address = request.data.get('user_wallet_address')
+        print("reff", ref_code)
+        if not ref_code:
+            return Response({"error": "Licensed node pass is required"}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            node_id = request.query_params.get('node')
-            node = NodeSetup.objects.filter(node_id = node_id)
-            serializer = NodeSetupSerializer(node, many = True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        except:
-            return Response({"detail": "Node not found"}, status=status.HTTP_404_NOT_FOUND)
+            user_with_referral_code = ClientUser.objects.get(
+                referral_code=ref_code)
+            try:
+                referral = Referral.objects.create(
+                    user=user_with_referral_code)
+            except Referral.DoesNotExist:
+                return Response({"error": "Error to create ref."}, status=status.HTTP_400_BAD_REQUEST)
+        except ClientUser.DoesNotExist:
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+
+        try:
+            user = ClientUser.objects.get(wallet_address = user_wallet_address)
+        except ClientUser.DoesNotExist:
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        user.referred_by = referral
+        user.save()
+        referral.increase_referred_users()
+
+        return Response("Liscenced Node is authorized")
+        
+        
+
 
 class ExhaustedNodeViewset(viewsets.ModelViewSet):
     queryset = ClientUser.objects.all()

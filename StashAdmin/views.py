@@ -23,29 +23,29 @@ class AdminUserViewset(viewsets.ModelViewSet):
     serializer_class = AdminUserSerializer
     lookup_field = 'wallet_address'
     def create(self, request):
-        ref_code = request.data.get('ref')
+        # ref_code = request.data.get('ref')
 
-        if not ref_code:
-            return Response({"error": "Referral code is required"}, status=status.HTTP_400_BAD_REQUEST)
-        try:
-            user_with_referral_code = AdminUser.objects.get(
-                referral_code=ref_code)
-            try:
-                referral = AdminReferral.objects.create(
-                    user=user_with_referral_code)
-            except AdminReferral.DoesNotExist:
-                return Response({"error": "Error to create ref."})
-        except AdminUser.DoesNotExist:
-            return Response({"error": "Invalid referral code"}, status=status.HTTP_400_BAD_REQUEST)
+        # if not ref_code:
+        #     return Response({"error": "Referral code is required"}, status=status.HTTP_400_BAD_REQUEST)
+        # try:
+        #     user_with_referral_code = AdminUser.objects.get(
+        #         referral_code=ref_code)
+        #     try:
+        #         referral = AdminReferral.objects.create(
+        #             user=user_with_referral_code)
+        #     except AdminReferral.DoesNotExist:
+        #         return Response({"error": "Error to create ref."})
+        # except AdminUser.DoesNotExist:
+        #     return Response({"error": "Invalid referral code"}, status=status.HTTP_400_BAD_REQUEST)
         new_user_referral_code = generate_referral_code()
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save(referral_code=new_user_referral_code)
-        user.referred_by = referral
+        # user.referred_by = referral
         user.save()
-        referral.increase_referred_users()
+        # referral.increase_referred_users()
         serializer_data = serializer.data
-        serializer_data['referral_address'] = user.referred_by.user.wallet_address
+        # serializer_data['referral_address'] = user.referred_by.user.wallet_address
         return Response(serializer_data, status=status.HTTP_201_CREATED)
 
 

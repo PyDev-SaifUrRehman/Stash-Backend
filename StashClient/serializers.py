@@ -104,3 +104,10 @@ class ClaimSerializer(serializers.Serializer):
             return value
         else:
             raise serializers.ValidationError("User with this wallet address does not exist")
+
+
+class NodePassAuthorized(serializers.Serializer):
+    user_wallet_address = serializers.CharField()
+    referral_code = serializers.CharField()
+
+
