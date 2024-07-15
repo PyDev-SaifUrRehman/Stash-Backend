@@ -19,12 +19,12 @@ class NodeSetup(models.Model):
     cost_per_node = models.PositiveIntegerField(default=1000)
     booster_node_1_cost = models.PositiveIntegerField(default=500)
     booster_node_2_cost = models.PositiveIntegerField(default=500)
-    node_commission_percentage = models.DecimalField(max_digits=14, decimal_places=2, default=0)
-    stash_linode = models.DecimalField(max_digits=14, decimal_places=2,default= 0)
-    amazon_quantum_ledger = models.DecimalField(max_digits=14, decimal_places=2,default=0)
-    dex_grid_bot = models.DecimalField(max_digits=14, decimal_places=2, default=0)
-    reward_claim_percentage = models.DecimalField(max_digits=14, decimal_places=2, default=0)
-    minimal_claim = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    node_commission_percentage = models.DecimalField(max_digits=14, decimal_places=0, default=0)
+    stash_linode = models.DecimalField(max_digits=14, decimal_places=0,default= 0)
+    amazon_quantum_ledger = models.DecimalField(max_digits=14, decimal_places=0,default=0)
+    dex_grid_bot = models.DecimalField(max_digits=14, decimal_places=0, default=0)
+    reward_claim_percentage = models.DecimalField(max_digits=14, decimal_places=0, default=0)
+    minimal_claim = models.DecimalField(max_digits=14, decimal_places=0, default=0)
     
     def __str__(self):
         return str(self.pk)

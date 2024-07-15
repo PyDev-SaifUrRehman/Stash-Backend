@@ -17,6 +17,17 @@ class NodeSetupViewset(viewsets.ModelViewSet):
     queryset = NodeSetup.objects.all()
     serializer_class = NodeSetupSerializer
 
+    def list(self, request, *args, **kwargs):
+        user = request.query_params.get('address')
+        try:
+            user = AdminUser.objects.get(wallet_address = user)
+        except Exception as e:
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+        node, created = NodeSetup.objects.get_or_create(user = user)
+        serializer = self.get_serializer(node)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+        # return super().list(request, *args, **kwargs)
+
 
 class AdminUserViewset(viewsets.ModelViewSet):
     queryset = AdminUser.objects.all()
