@@ -37,6 +37,8 @@ class AdminUserSerializer(serializers.ModelSerializer):
 
 
 class ParentMasterNodeSerializer(serializers.ModelSerializer):
+    node = serializers.CharField()
+
     class Meta:
         model = MasterNode
         fields = '__all__'
@@ -55,15 +57,35 @@ class ParentMasterNodeSerializer(serializers.ModelSerializer):
         else:
             raise serializers.ValidationError(
                 "No admin wallet address added")
+        
+    def validate_node(self, value):
+        try:
+            node = NodeSetup.objects.get(node_id = value)
+            if node:
+                return node
+        except:
+            raise serializers.ValidationError("No node with this Id")
+        
 
 
 
 class MasterNodeSerializer(serializers.ModelSerializer):
+    node = serializers.CharField()
+
     # parent_node = ParentMasterNodeSerializer()
     class Meta:
         model = MasterNode
         fields = '__all__'
         read_only_fields = ['parent_node', 'node_id']
+
+    def validate_node(self, value):
+        try:
+            node = NodeSetup.objects.get(node_id = value)
+            if node:
+                return node
+        except:
+            raise serializers.ValidationError("No node with this Id")
+        
 
     def validate(self, attrs):
         qp_wallet_address = self.context['request'].query_params.get(
@@ -120,9 +142,25 @@ class MasterNodeSerializer(serializers.ModelSerializer):
 
 
 class NodeManagerSerializer(serializers.ModelSerializer):
+    node = serializers.CharField()
+    node_id = serializers.SerializerMethodField(read_only = True)
+    manager = serializers.CharField()
+
+
     class Meta:
         model = NodeManager
         fields = '__all__'
+
+    def get_node_id(self, obj):
+        return obj.node.node_id if obj.node else None
+    def validate_node(self, value):
+        try:
+            node = NodeSetup.objects.get(node_id = value)
+            if node:
+                return node
+        except:
+            raise serializers.ValidationError("No node with this Id")
+        
 
     def validate(self, attrs):
         qp_wallet_address = self.context['request'].query_params.get(
@@ -140,8 +178,9 @@ class NodeManagerSerializer(serializers.ModelSerializer):
                 "No admin wallet address added")
 
 
-
 class NodePartnerSerializer(serializers.ModelSerializer):
+    node = serializers.CharField()
+    
     class Meta:
         model = NodePartner
         fields = '__all__'
@@ -154,7 +193,6 @@ class NodePartnerSerializer(serializers.ModelSerializer):
         total_share += share
         if total_share > 100:
             raise serializers.ValidationError('The total share for a node must not exceed 100%.')
-
         return data
     
     def validate(self, attrs):
@@ -171,12 +209,22 @@ class NodePartnerSerializer(serializers.ModelSerializer):
         else:
             raise serializers.ValidationError(
                 "No admin wallet address added")
+        
+    def validate_node(self, value):
+        try:
+            node = NodeSetup.objects.get(node_id = value)
+            if node:
+                return node
+        except:
+            raise serializers.ValidationError("No node with this Id")
+        
 
 
 class NodeSetupSerializer(serializers.ModelSerializer):
 
     node_id = serializers.CharField(read_only = True)
     user = serializers.CharField()
+    
     # master_node = MasterNodeSerializer()
     # node_manager = NodeManagerSerializer()
     # node_partner = NodePartnerSerializer()
@@ -276,6 +324,7 @@ class AdminReferralSerializer(serializers.ModelSerializer):
         max_digits=10, decimal_places=2, read_only=True)
     no_of_referred_users = serializers.IntegerField(read_only=True)
     user = serializers.CharField()
+
 
     class Meta:
         model = AdminReferral
