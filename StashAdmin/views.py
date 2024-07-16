@@ -1,4 +1,6 @@
 from django.shortcuts import render
+from rest_framework.decorators import action
+
 
 from .models import MasterNode, NodeManager, NodePartner, NodeSetup, AdminUser, AdminReferral
 from .serializers import NodeSetupSerializer, AdminUserSerializer, AdminReferralSerializer, NodePartnerSerializer, MasterNodeSerializer, NodeManagerSerializer
@@ -27,6 +29,13 @@ class NodeSetupViewset(viewsets.ModelViewSet):
         serializer = self.get_serializer(node)
         return Response(serializer.data, status=status.HTTP_200_OK)
         # return super().list(request, *args, **kwargs)
+    @action(methods=['get'], detail=False)
+    def getnode(self, request, *args, **kwargs):
+        node = NodeSetup.objects.all()
+        serializer = self.get_serializer(node, many = True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
 
 
 class AdminUserViewset(viewsets.ModelViewSet):
