@@ -68,9 +68,10 @@ class ParentMasterNodeSerializer(serializers.ModelSerializer):
         
 
 
-
+from StashClient.utils import generate_referral_code
 class MasterNodeSerializer(serializers.ModelSerializer):
     node = serializers.CharField()
+    master_node_id = serializers.SerializerMethodField(read_only = True)
 
     # parent_node = ParentMasterNodeSerializer()
     class Meta:
@@ -97,10 +98,19 @@ class MasterNodeSerializer(serializers.ModelSerializer):
             except AdminUser.DoesNotExist:
                 raise ValidationError(
                     "You don't have permission to perform this action.")
+            wallet_address = attrs['wallet_address']
+            
+            master_node, created = AdminUser.objects.get_or_create(wallet_address=wallet_address, user_type = 'MasterNode')
             return attrs
         else:
             raise serializers.ValidationError(
                 "No admin wallet address added")
+        
+    def get_master_node_id(self, attr):
+        print(attr)
+        attr = "aa"
+        return attr
+
 
 
     # def create(self, validated_data):
@@ -251,8 +261,7 @@ class NodeSetupSerializer(serializers.ModelSerializer):
             'address')
         # try:
         node = NodeSetup.objects.first()
-        print("node", node)
-        if node:
+        if node and not self.instance:
             raise ValidationError("Node already found")
         
         # except:
