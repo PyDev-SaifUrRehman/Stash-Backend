@@ -185,19 +185,18 @@ class NodePartnerSerializer(serializers.ModelSerializer):
         model = NodePartner
         fields = '__all__'
 
-    def validate(self, data):
-        node = data.get('node')
-        share = data.get('share')
+    
+    def validate(self, attrs):
+        qp_wallet_address = self.context['request'].query_params.get(
+            'address')
+        node = attrs.get('node')
+        share = attrs.get('share')
         instance = self.instance
         total_share = NodePartner.objects.filter(node=node).exclude(pk=instance.pk if instance else None).aggregate(total=Sum('share'))['total'] or 0
         total_share += share
         if total_share > 100:
             raise serializers.ValidationError('The total share for a node must not exceed 100%.')
-        return data
-    
-    def validate(self, attrs):
-        qp_wallet_address = self.context['request'].query_params.get(
-            'address')
+        # return data
         if qp_wallet_address:
             try:
                 admin_user = AdminUser.objects.get(
@@ -209,6 +208,8 @@ class NodePartnerSerializer(serializers.ModelSerializer):
         else:
             raise serializers.ValidationError(
                 "No admin wallet address added")
+        
+        
         
     def validate_node(self, value):
         try:

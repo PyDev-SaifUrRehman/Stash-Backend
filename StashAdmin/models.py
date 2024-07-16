@@ -33,10 +33,10 @@ class NodeSetup(models.Model):
 class NodePartner(models.Model):
     node = models.ForeignKey(NodeSetup, on_delete=models.CASCADE, related_name='node_partner' )
     partner_wallet_address = models.CharField(max_length=255)
-    share = models.DecimalField(max_digits=14, decimal_places=2)
+    share = models.DecimalField(max_digits=14, decimal_places=0)
 
     def __str__(self) -> str:
-        return self.pk
+        return self.partner_wallet_address
         
     
 class MasterNode(models.Model):
@@ -44,12 +44,12 @@ class MasterNode(models.Model):
     parent_node = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='sub_nodes')
     master_node_id = models.CharField(max_length=255)
     wallet_address = models.CharField(max_length=255)
-    node_pass_comm_percentage = models.DecimalField(max_digits=14, decimal_places=2)
-    sub_node_pass_comm_percentage = models.DecimalField(max_digits=14, decimal_places=2)
-    claim_fee_percentage =models.DecimalField(max_digits=14, decimal_places=2)
+    node_pass_comm_percentage = models.DecimalField(max_digits=14, decimal_places=0)
+    sub_node_pass_comm_percentage = models.DecimalField(max_digits=14, decimal_places=0)
+    claim_fee_percentage =models.DecimalField(max_digits=14, decimal_places=0)
 
     def __str__(self) -> str:
-        return str(self.pk)
+        return self.master_node_id
 
 class NodeManager(models.Model):
     node = models.ForeignKey(NodeSetup, on_delete=models.CASCADE, related_name='node' )
@@ -66,7 +66,7 @@ class AdminReferral(models.Model):
         'StashClient.Transaction', on_delete=models.CASCADE, blank=True, null=True, related_name='admin_referral_trx')
     no_of_referred_users = models.PositiveIntegerField(default=0)
     commission_earned = models.DecimalField(
-        max_digits=14, decimal_places=2, default=0)
+        max_digits=14, decimal_places=0, default=0)
     commission_received = models.BooleanField(default=False)
 
     def increase_referred_users(self):
