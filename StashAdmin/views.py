@@ -104,7 +104,7 @@ class NodePartnerViewset(viewsets.ModelViewSet):
 class NodeMasterViewset(viewsets.ModelViewSet):
     queryset = MasterNode.objects.all()
     serializer_class = MasterNodeSerializer
-    lookup_field = 'node__user__referral_code'
+    # lookup_field = 'node__user__referral_code'
     filter_backends = [filters.SearchFilter, DjangoFilterBackend]
     filterset_fields = ['node__user__referral_code']
     
@@ -169,8 +169,11 @@ class AdminNodeOverview(viewsets.ModelViewSet):
 class AdminClaimViewset(viewsets.ModelViewSet):
 
     def list(self, request, *args, **kwargs):
+
         active_nodes_balance = ClientUser.objects.exclude(maturity=F('claimed_reward')).aggregate(amount=Sum('total_deposit'))['amount'] or 0
         claim_rewards = Transaction.objects.filter(transaction_type='Reward Claim').aggregate(amount=Sum('amount'))['amount'] or 0
-        # current_net_balance = 
-        return Response({'active_nodes_balance': active_nodes_balance, 'claim_rewards': claim_rewards})
-        return super().list(request, *args, **kwargs)
+        all_trx_balance= Transaction.objects.filter(transaction_type = 'ETH 2.0 Node').aggregate(amount = Sum('amount'))['amount'] or 0
+        current_net_balance = all_trx_balance - active_nodes_balance
+        nodes_payout = Transaction.objects.filter(transaction_type = 'ETH 2.0 Node') or 0
+        return Response({'active_nodes_balance': active_nodes_balance, 'claim_rewards': claim_rewards, 'current_net_balance': current_net_balance
+        })

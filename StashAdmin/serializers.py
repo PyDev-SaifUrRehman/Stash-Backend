@@ -70,7 +70,7 @@ class ParentMasterNodeSerializer(serializers.ModelSerializer):
 from StashClient.utils import generate_referral_code
 class MasterNodeSerializer(serializers.ModelSerializer):
     node = serializers.CharField()
-    master_node_id = serializers.SerializerMethodField(read_only = True)
+    master_node_id = serializers.CharField(required = False)
 
     # parent_node = ParentMasterNodeSerializer()
     class Meta:
@@ -104,16 +104,21 @@ class MasterNodeSerializer(serializers.ModelSerializer):
         else:
             raise serializers.ValidationError(
                 "No admin wallet address added")
-    def get_master_node_id(self, obj):
-        return obj.master_node_id
+    # def get_master_node_id(self, obj):
+    #     return obj.master_node_id
     
     def create(self, validated_data):
-        validated_data['master_node_id'] = generate_referral_code()
+        master_node_id = validated_data.get('master_node_id', generate_referral_code())
+        validated_data['master_node_id'] = master_node_id
+        # validated_data['master_node_id'] = generate_referral_code()
         return super().create(validated_data)
 
     def update(self, instance, validated_data):
         if 'master_node_id' not in validated_data:
-            validated_data['master_node_id'] = generate_referral_code()
+            master_node_id = validated_data.get('master_node_id', generate_referral_code())
+
+            validated_data['master_node_id'] = master_node_id
+            # validated_data['master_node_id'] = generate_referral_code()
         return super().update(instance, validated_data)
 
 
