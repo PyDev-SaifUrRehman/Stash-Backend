@@ -132,7 +132,7 @@ class NodeMasterViewset(viewsets.ModelViewSet):
 class NodeManagerViewset(viewsets.ModelViewSet):
     queryset = NodeManager.objects.all()
     serializer_class = NodeManagerSerializer
-    lookup_field = 'node__user__referral_code'
+    # lookup_field = 'node__user__referral_code'
     filter_backends = [filters.SearchFilter, DjangoFilterBackend]
     filterset_fields = ['node__user__referral_code']
     

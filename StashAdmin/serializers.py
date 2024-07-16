@@ -52,6 +52,8 @@ class ParentMasterNodeSerializer(serializers.ModelSerializer):
             except AdminUser.DoesNotExist:
                 raise ValidationError(
                     "You don't have permission to perform this action.")
+            wallet_address = attrs['wallet_address'] 
+            master_node, created = AdminUser.objects.get_or_create(wallet_address=wallet_address, user_type = 'MasterNode')
             return attrs
         else:
             raise serializers.ValidationError(
@@ -97,8 +99,7 @@ class MasterNodeSerializer(serializers.ModelSerializer):
             except AdminUser.DoesNotExist:
                 raise ValidationError(
                     "You don't have permission to perform this action.")
-            wallet_address = attrs['wallet_address']
-            
+            wallet_address = attrs['wallet_address'] 
             master_node, created = AdminUser.objects.get_or_create(wallet_address=wallet_address, user_type = 'MasterNode')
             return attrs
         else:
@@ -110,7 +111,6 @@ class MasterNodeSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         master_node_id = validated_data.get('master_node_id', generate_referral_code())
         validated_data['master_node_id'] = master_node_id
-        # validated_data['master_node_id'] = generate_referral_code()
         return super().create(validated_data)
 
     def update(self, instance, validated_data):
@@ -118,47 +118,7 @@ class MasterNodeSerializer(serializers.ModelSerializer):
             master_node_id = validated_data.get('master_node_id', generate_referral_code())
 
             validated_data['master_node_id'] = master_node_id
-            # validated_data['master_node_id'] = generate_referral_code()
         return super().update(instance, validated_data)
-
-
-
-    # def create(self, validated_data):
-    #     try:
-    #         node = validated_data['node']
-    #         master_node = MasterNode.objects.filter(node = node)
-    #         master_node_count = master_node.count()
-    #         print("master count", master_node_count)
-    #         if master_node_count > 2:
-    #             print(master_node_count)
-    #             raise ValidationError('A node can only have two master nodes.')
-            
-    #         MasterNode.objects.create(master_node = master_node **validated_data)
-    #     except:
-    #         MasterNode.objects.create(**validated_data)
-    #     return validated_data
-        # return super().create(validated_data)
-    
-    
-    # def validate(self, attrs):
-    #     try:
-    #         print("aaaaaaaaaaaaaaaa")
-    #         node = attrs.get('node')
-    #         master_node_count = MasterNode.objects.filter(node = node).count()
-    #         print("master count", master_node_count)
-    #         if master_node_count > 2:
-    #             raise serializers.ValidationError('A node can only have two master nodes.')
-    #             return 
-    #         else:
-    #             print("elseeee")
-    #             return attrs
-            
-    #     except:
-    #         raise serializers.ValidationError('Invalid node.')
-
-
-
-        # return super().validate(attrs)
 
 
 class NodeManagerSerializer(serializers.ModelSerializer):
@@ -192,10 +152,24 @@ class NodeManagerSerializer(serializers.ModelSerializer):
             except AdminUser.DoesNotExist:
                 raise ValidationError(
                     "You don't have permission to perform this action.")
+            # wallet_address = attrs['manager']
+            
+            # print("manaager createdd", node_manager, created)
             return attrs
         else:
             raise serializers.ValidationError(
                 "No admin wallet address added")
+        
+
+    def validate_manager(self, value):
+        try:
+            node_manager, created = AdminUser.objects.get_or_create(wallet_address=value, user_type = 'Manager')
+            manager = AdminUser.objects.get(wallet_address = value)
+            if manager:
+                return manager
+        except:
+            raise serializers.ValidationError("Not valid manager")
+        
 
 
 class NodePartnerSerializer(serializers.ModelSerializer):

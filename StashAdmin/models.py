@@ -53,7 +53,7 @@ class MasterNode(models.Model):
 
 class NodeManager(models.Model):
     node = models.ForeignKey(NodeSetup, on_delete=models.CASCADE, related_name='node' )
-    manager = models.ForeignKey(BaseUser, on_delete=models.CASCADE, related_name='node_manager')    
+    manager = models.ForeignKey(AdminUser, on_delete=models.CASCADE, related_name='node_manager')    
 
     def __str__(self) -> str:
         return self.manager.wallet_address
