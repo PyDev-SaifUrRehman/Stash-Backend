@@ -104,9 +104,15 @@ class GetRefAdressViewset(viewsets.GenericViewSet, ListModelMixin):
         try:
             user_with_referral_code = ClientUser.objects.get(
                 referral_code=ref_code)
-            return Response({"wallet_address": user_with_referral_code.wallet_address}, status=status.HTTP_200_OK)
         except ClientUser.DoesNotExist:
             return Response({"error": "Invalid referral code"}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            node = NodeSetup.objects.first().node_id
+        except:
+            return Response({"error": "Invalid referral code"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"wallet_address": user_with_referral_code.wallet_address, "node_id": node}, status=status.HTTP_200_OK)
+            
+
 
 
 class ClientWalletDetialViewset(viewsets.GenericViewSet, ListModelMixin):
@@ -512,5 +518,4 @@ class EthereumDataVewiset(viewsets.GenericViewSet, ListModelMixin):
         except Exception as e:
             return Response({"detail": str(e) + "Unable to fetch Ethereum data"}, status=status.HTTP_400_BAD_REQUEST)
         return HttpResponse(response._content, status=status.HTTP_200_OK)
-        
         

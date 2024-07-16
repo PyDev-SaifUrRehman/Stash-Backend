@@ -18,6 +18,8 @@ router.register(r'node-auth', AuthorizedNodeViewset, basename='node-auth')
 router.register(r'exhausted-node', ExhaustedNodeViewset, basename='exhausted')
 router.register(r'sub-node', GeneratedSubNodesViewset, basename='gen-sub-node')
 router.register(r'eth-data', EthereumDataVewiset, basename='eth-data')
+# router.register(r'get-ref-address', GetRefAdressViewset,
+#                 basename='get-ref-address')
 
 
 urlpatterns = router.urls
