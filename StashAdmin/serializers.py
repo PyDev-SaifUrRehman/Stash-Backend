@@ -3,7 +3,6 @@ from rest_framework import serializers
 from django.db.models import Sum
 from rest_framework.exceptions import ValidationError
 
-
 from StashClient.utils import generate_referral_code
 
 class AdminUserSerializer(serializers.ModelSerializer):
@@ -105,11 +104,17 @@ class MasterNodeSerializer(serializers.ModelSerializer):
         else:
             raise serializers.ValidationError(
                 "No admin wallet address added")
-        
-    def get_master_node_id(self, attr):
-        print(attr)
-        attr = "aa"
-        return attr
+    def get_master_node_id(self, obj):
+        return obj.master_node_id
+    
+    def create(self, validated_data):
+        validated_data['master_node_id'] = generate_referral_code()
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        if 'master_node_id' not in validated_data:
+            validated_data['master_node_id'] = generate_referral_code()
+        return super().update(instance, validated_data)
 
 
 
@@ -202,6 +207,10 @@ class NodePartnerSerializer(serializers.ModelSerializer):
         node = attrs.get('node')
         share = attrs.get('share')
         instance = self.instance
+        existing_partners_count = NodePartner.objects.filter(node=node).exclude(pk=instance.pk if instance else None).count()
+        if existing_partners_count >= 2:
+            raise serializers.ValidationError('A node cannot have more than 2 partners.')
+
         total_share = NodePartner.objects.filter(node=node).exclude(pk=instance.pk if instance else None).aggregate(total=Sum('share'))['total'] or 0
         total_share += share
         if total_share > 100:

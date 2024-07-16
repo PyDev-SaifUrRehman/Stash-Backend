@@ -27,7 +27,7 @@ class NodeSetup(models.Model):
     minimal_claim = models.DecimalField(max_digits=14, decimal_places=0, default=0)
     
     def __str__(self):
-        return str(self.pk)
+        return str(self.node_id)
     
 
 class NodePartner(models.Model):
@@ -49,14 +49,14 @@ class MasterNode(models.Model):
     claim_fee_percentage =models.DecimalField(max_digits=14, decimal_places=0)
 
     def __str__(self) -> str:
-        return self.master_node_id
+        return self.wallet_address
 
 class NodeManager(models.Model):
     node = models.ForeignKey(NodeSetup, on_delete=models.CASCADE, related_name='node' )
     manager = models.ForeignKey(BaseUser, on_delete=models.CASCADE, related_name='node_manager')    
 
     def __str__(self) -> str:
-        return self.pk
+        return self.manager.wallet_address
 
 class AdminReferral(models.Model):
     from StashClient.models import Transaction
@@ -82,4 +82,4 @@ class AdminReferral(models.Model):
         self.save()
 
     def __str__(self):
-        return str(self.user)
+        return str(self.user.wallet_address)
