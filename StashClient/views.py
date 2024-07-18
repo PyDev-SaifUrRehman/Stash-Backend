@@ -289,6 +289,16 @@ class TransactionViewset(viewsets.ModelViewSet):
     filterset_fields = ['sender__wallet_address',
                         'sender__referred_by__user__wallet_address', 'transaction_type']
     
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        queryset = queryset.filter(transaction_type__in=[
+                                    'SuperNode Boost', 'Generated SubNode', 'Stake & Swim Boost', 'ETH 2.0 Node'])
+        wallet_address = self.request.query_params.get('address')
+        if wallet_address:
+            queryset = queryset.filter(
+                sender__wallet_address=wallet_address)
+        return queryset
+    
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
