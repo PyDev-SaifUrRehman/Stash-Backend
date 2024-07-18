@@ -294,6 +294,9 @@ class TransactionViewset(viewsets.ModelViewSet):
         queryset = queryset.filter(transaction_type__in=[
                                     'SuperNode Boost', 'Generated SubNode', 'Stake & Swim Boost', 'ETH 2.0 Node'])
         wallet_address = self.request.query_params.get('address')
+        all = self.request.query_params.get('all')
+        if all:
+            queryset = Transaction.objects.all()
         if wallet_address:
             queryset = queryset.filter(
                 sender__wallet_address=wallet_address)
