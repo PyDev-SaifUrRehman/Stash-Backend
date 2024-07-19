@@ -113,7 +113,8 @@ class GetRefAdressViewset(viewsets.GenericViewSet, ListModelMixin):
         except:
             return Response({"error": "Invalid node setup"}, status=status.HTTP_400_BAD_REQUEST)
         
-        master_node_ref = MasterNode.objects.first()
+        master_node_ref = MasterNode.objects.get(parent_node__isnull=False)
+        print("massss", master_node_ref)
         master_node_ref_child_node = master_node_ref.master_node_id
         master_node_ref_parent_node = master_node_ref.parent_node.master_node_id if master_node_ref.parent_node else None
         main_ref_address = user_with_referral_code.wallet_address
