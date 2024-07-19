@@ -31,9 +31,9 @@ class ClientUser(BaseUser):
     total_deposit = models.DecimalField(max_digits=14, decimal_places=2, default=0)
     referral_code = models.CharField(max_length=100, unique=True, null = True, blank=True)
 
-    def save(self, *args, **kwargs):
-        self.user_type = 'Client'
-        super().save(*args, **kwargs)
+    # def save(self, *args, **kwargs):
+    #     self.user_type = 'Client'
+    #     super().save(*args, **kwargs)
 
     # def update_balance(self):
     #     try:
@@ -48,7 +48,7 @@ class ClientUser(BaseUser):
     #         pass
 
     def __str__(self):
-        return self.wallet_address
+        return str(self.wallet_address) + " referralcode " + str(self.referral_code) + " by "+ str(self.referred_by)
 
 
 class Referral(models.Model):
@@ -60,6 +60,7 @@ class Referral(models.Model):
     commission_earned = models.DecimalField(
         max_digits=14, decimal_places=2, default=0)
     commission_received = models.BooleanField(default=False)
+    # master_node = models.CharField(max_length=50, null=True, blank=True)
 
     def increase_referred_users(self):
         self.no_of_referred_users += 1

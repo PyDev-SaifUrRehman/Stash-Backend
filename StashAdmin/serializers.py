@@ -1,19 +1,20 @@
-from .models import NodeSetup, MasterNode, NodeManager, NodePartner, AdminUser, AdminReferral
+from .models import NodeSetup, MasterNode, NodeManager, NodePartner, AdminUser, AdminReferral, NodePayout
 from rest_framework import serializers
 from django.db.models import Sum
 from rest_framework.exceptions import ValidationError
 
 from StashClient.utils import generate_referral_code
+from StashClient.models import ClientUser, Referral
 
 class AdminUserSerializer(serializers.ModelSerializer):
     class Meta:
-        model = AdminUser
+        model = ClientUser
         fields = '__all__'
         read_only_fields = ['referral_code', 'referred_by']
 
 
     def validate_wallet_address(self, value):
-        if AdminUser.objects.filter(wallet_address=value).exists():
+        if ClientUser.objects.filter(wallet_address=value).exists():
             raise serializers.ValidationError("Address already registered!!")
         return value
 
@@ -53,7 +54,10 @@ class ParentMasterNodeSerializer(serializers.ModelSerializer):
                 raise ValidationError(
                     "You don't have permission to perform this action.")
             wallet_address = attrs['wallet_address'] 
-            master_node, created = AdminUser.objects.get_or_create(wallet_address=wallet_address, user_type = 'MasterNode')
+            referral_code = attrs['master_node_id'] 
+            referred_by_user = NodeSetup.objects.first().user
+            referred_by = Referral.objects.create(user = referred_by_user)
+            master_node, created = ClientUser.objects.get_or_create(wallet_address=wallet_address, referred_by = referred_by, referral_code = referral_code, user_type = 'MasterNode')
             return attrs
         else:
             raise serializers.ValidationError(
@@ -100,7 +104,10 @@ class MasterNodeSerializer(serializers.ModelSerializer):
                 raise ValidationError(
                     "You don't have permission to perform this action.")
             wallet_address = attrs['wallet_address'] 
-            master_node, created = AdminUser.objects.get_or_create(wallet_address=wallet_address, user_type = 'MasterNode')
+            referral_code = attrs['master_node_id'] 
+            referred_by = NodeSetup.objects.first().user
+            referred_by = Referral.objects.create(user = referred_by)
+            master_node, created = ClientUser.objects.get_or_create(wallet_address=wallet_address, referred_by = referred_by, referral_code = referral_code, user_type = 'MasterNode')
             return attrs
         else:
             raise serializers.ValidationError(
@@ -239,9 +246,9 @@ class NodeSetupSerializer(serializers.ModelSerializer):
 
     def validate_user(self, value):
         try:
-            value = AdminUser.objects.get(wallet_address=value)
+            value = ClientUser.objects.get(wallet_address=value)
             return value
-        except AdminUser.DoesNotExist:
+        except ClientUser.DoesNotExist:
             raise serializers.ValidationError("Invalid User")
         
     def validate(self, attrs):
@@ -351,3 +358,31 @@ class AdminReferralSerializer(serializers.ModelSerializer):
         else:
             raise serializers.ValidationError(
                 "No admin wallet address added")
+
+
+class NodePayoutSerializer(serializers.ModelSerializer):
+    
+    class Meta:
+        model = NodePayout
+        fields = '__all__'
+        
+
+    def validate(self, attrs):
+        wallet_address_from_cookie = self.context['request'].query_params.get(
+            'address')
+        if wallet_address_from_cookie:
+            try:
+                admin_user = ClientUser.objects.get(
+                    wallet_address=wallet_address_from_cookie)
+            except AdminUser.DoesNotExist:
+                raise ValidationError(
+                    "You don't have permission to perform this action.")
+
+            if admin_user.user_type != 'Admin' or admin_user.user_type == 'Manager' or admin_user.user_type == 'MasterNode':
+                raise ValidationError(
+                    "You don't have permission to perform this action.")
+            return attrs
+        else:
+            raise serializers.ValidationError(
+                "No wallet address")
+

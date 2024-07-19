@@ -1,19 +1,18 @@
 from django.shortcuts import render
-from rest_framework.decorators import action
-
-
-from .models import MasterNode, NodeManager, NodePartner, NodeSetup, AdminUser, AdminReferral
-from .serializers import NodeSetupSerializer, AdminUserSerializer, AdminReferralSerializer, NodePartnerSerializer, MasterNodeSerializer, NodeManagerSerializer
+from django.db.models import Value, Sum, F
 from rest_framework import viewsets
 from rest_framework import status
+from rest_framework.decorators import action
 from rest_framework.response import Response
+
+from .models import MasterNode, NodeManager, NodePartner, NodeSetup, AdminUser, NodePayout
+from .serializers import NodeSetupSerializer, AdminUserSerializer, NodePartnerSerializer, MasterNodeSerializer, NodeManagerSerializer, NodePayoutSerializer
 from StashClient.utils import generate_referral_code
 from django.core.exceptions import ObjectDoesNotExist
-from django.db import models
 
 from rest_framework import filters
 from django_filters.rest_framework import DjangoFilterBackend
-
+from StashClient.models import ClientUser, Transaction
 
 class NodeSetupViewset(viewsets.ModelViewSet):
     queryset = NodeSetup.objects.all()
@@ -22,13 +21,12 @@ class NodeSetupViewset(viewsets.ModelViewSet):
     def list(self, request, *args, **kwargs):
         user = request.query_params.get('address')
         try:
-            user = AdminUser.objects.get(wallet_address = user)
+            user = ClientUser.objects.get(wallet_address = user)
         except Exception as e:
             return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
         node, created = NodeSetup.objects.get_or_create(user = user)
         serializer = self.get_serializer(node)
         return Response(serializer.data, status=status.HTTP_200_OK)
-        # return super().list(request, *args, **kwargs)
     @action(methods=['get'], detail=False)
     def getnode(self, request, *args, **kwargs):
         node = NodeSetup.objects.all()
@@ -36,10 +34,8 @@ class NodeSetupViewset(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-
-
 class AdminUserViewset(viewsets.ModelViewSet):
-    queryset = AdminUser.objects.all()
+    queryset = ClientUser.objects.all()
     serializer_class = AdminUserSerializer
     lookup_field = 'wallet_address'
     def create(self, request):
@@ -69,29 +65,29 @@ class AdminUserViewset(viewsets.ModelViewSet):
         return Response(serializer_data, status=status.HTTP_201_CREATED)
 
 
-class AdminReferralViewSet(viewsets.ModelViewSet):
-    queryset = AdminReferral.objects.all()
-    serializer_class = AdminReferralSerializer
+# class AdminReferralViewSet(viewsets.ModelViewSet):
+#     queryset = AdminReferral.objects.all()
+#     serializer_class = AdminReferralSerializer
 
-    def list(self, request, pk=None):
-        try:
-            wallet_address_from_cookie = request.query_params.get('address')
-            instance = AdminUser.objects.get(
-                wallet_address=wallet_address_from_cookie)
-        except (ObjectDoesNotExist, ValueError):
-            return Response({"detail": "User not found or invalid address"}, status=status.HTTP_404_NOT_FOUND)
+#     def list(self, request, pk=None):
+#         try:
+#             wallet_address_from_cookie = request.query_params.get('address')
+#             instance = AdminUser.objects.get(
+#                 wallet_address=wallet_address_from_cookie)
+#         except (ObjectDoesNotExist, ValueError):
+#             return Response({"detail": "User not found or invalid address"}, status=status.HTTP_404_NOT_FOUND)
 
-        try:
-            referrals = AdminReferral.objects.filter(user=instance)
-        except AdminReferral.DoesNotExist:
-            return Response({"error": "Referral not found for this user"}, status=status.HTTP_404_NOT_FOUND)
+#         try:
+#             referrals = AdminReferral.objects.filter(user=instance)
+#         except AdminReferral.DoesNotExist:
+#             return Response({"error": "Referral not found for this user"}, status=status.HTTP_404_NOT_FOUND)
         
-        serializer = self.get_serializer(referrals, many = True)
-        total_referred_users = referrals.aggregate(total_users=models.Sum('no_of_referred_users'))['total_users'] or 0
-        total_commission_earned = referrals.aggregate(total_commission=models.Sum('commission_earned'))['total_commission'] or 0
+#         serializer = self.get_serializer(referrals, many = True)
+#         total_referred_users = referrals.aggregate(total_users=models.Sum('no_of_referred_users'))['total_users'] or 0
+#         total_commission_earned = referrals.aggregate(total_commission=models.Sum('commission_earned'))['total_commission'] or 0
         
-        return Response({"no_of_referred_users": total_referred_users,
-            "commission_earned": total_commission_earned})
+#         return Response({"no_of_referred_users": total_referred_users,
+#             "commission_earned": total_commission_earned})
 
 
 class NodePartnerViewset(viewsets.ModelViewSet):
@@ -137,8 +133,6 @@ class NodeManagerViewset(viewsets.ModelViewSet):
     filterset_fields = ['node__user__referral_code']
     
 
-from StashClient.models import Transaction, ClientUser
-from django.db.models import Value, Sum, F
 class AdminNodeOverview(viewsets.ModelViewSet):
 
     queryset = AdminUser.objects.all()
@@ -149,7 +143,7 @@ class AdminNodeOverview(viewsets.ModelViewSet):
         total_eth2_nodes_count = Transaction.objects.filter(transaction_type = 'ETH 2.0 Node').count() or 0
         stake_swim_boostcount = Transaction.objects.filter(transaction_type = 'Stake & Swim Boost').count() or 0
         total_super_nodes_count = Transaction.objects.filter(transaction_type = 'SuperNode Boost').count() or 0
-        total_setup_fee = Transaction.objects.filter(transaction_type = 'ETH 2.0 Node').aggregate(setup_charges = models.Sum('setup_charges'))['setup_charges'] or 0
+        total_setup_fee = Transaction.objects.filter(transaction_type = 'ETH 2.0 Node').aggregate(setup_charges = Sum('setup_charges'))['setup_charges'] or 0
         total_super_nodes_count = 0
         # active_nodes_balance = 0  #node amount that are not exausted, mean maturity - withdrawal == 0 users
         active_nodes_balance = ClientUser.objects.exclude(maturity=F('claimed_reward')).aggregate(amount=Sum('total_deposit'))['amount'] or 0
@@ -167,13 +161,25 @@ class AdminNodeOverview(viewsets.ModelViewSet):
 
 
 class AdminClaimViewset(viewsets.ModelViewSet):
+    serializer_class = NodePayoutSerializer
 
     def list(self, request, *args, **kwargs):
-
         active_nodes_balance = ClientUser.objects.exclude(maturity=F('claimed_reward')).aggregate(amount=Sum('total_deposit'))['amount'] or 0
         claim_rewards = Transaction.objects.filter(transaction_type='Reward Claim').aggregate(amount=Sum('amount'))['amount'] or 0
         all_trx_balance= Transaction.objects.filter(transaction_type = 'ETH 2.0 Node').aggregate(amount = Sum('amount'))['amount'] or 0
         current_net_balance = all_trx_balance - active_nodes_balance
         nodes_payout = Transaction.objects.filter(transaction_type = 'ETH 2.0 Node') or 0
-        return Response({'active_nodes_balance': active_nodes_balance, 'claim_rewards': claim_rewards, 'current_net_balance': current_net_balance
+        node_payout, created = NodePayout.objects.get_or_create(pk=1)
+        node_payout_amount = node_payout.amount
+        return Response({'active_nodes_balance': active_nodes_balance, 'claim_rewards': claim_rewards, 'current_net_balance': current_net_balance, "node_payout_amount":node_payout_amount
         })
+
+    @action(methods=['put'], detail=False)    
+    def updatepayout(self, request, pk=None):
+        node_payout, created = NodePayout.objects.get_or_create(pk=1)
+        serializer = NodePayoutSerializer(
+            node_payout, data=request.data, context={'request': request})
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

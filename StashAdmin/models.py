@@ -1,5 +1,5 @@
 from django.db import models
-from StashClient.models import BaseUser
+from StashClient.models import BaseUser, ClientUser
 
 class AdminUser(BaseUser):
     referred_by = models.ForeignKey(
@@ -15,7 +15,7 @@ class AdminUser(BaseUser):
 
 class NodeSetup(models.Model):
     node_id = models.CharField(max_length=255)
-    user = models.ForeignKey(AdminUser, on_delete=models.CASCADE, related_name='node_setup')
+    user = models.ForeignKey(ClientUser, on_delete=models.CASCADE, related_name='node_setup')
     cost_per_node = models.PositiveIntegerField(default=1000)
     booster_node_1_cost = models.PositiveIntegerField(default=500)
     booster_node_2_cost = models.PositiveIntegerField(default=500)
@@ -53,7 +53,7 @@ class MasterNode(models.Model):
 
 class NodeManager(models.Model):
     node = models.ForeignKey(NodeSetup, on_delete=models.CASCADE, related_name='node' )
-    manager = models.ForeignKey(AdminUser, on_delete=models.CASCADE, related_name='node_manager')    
+    manager = models.ForeignKey(ClientUser, on_delete=models.CASCADE, related_name='node_manager')    
 
     def __str__(self) -> str:
         return self.manager.wallet_address
@@ -61,7 +61,7 @@ class NodeManager(models.Model):
 class AdminReferral(models.Model):
     from StashClient.models import Transaction
     user = models.ForeignKey(
-        AdminUser, on_delete=models.CASCADE, related_name='admin_referral')
+        ClientUser, on_delete=models.CASCADE, related_name='admin_referral')
     commission_transactions = models.ForeignKey(
         'StashClient.Transaction', on_delete=models.CASCADE, blank=True, null=True, related_name='admin_referral_trx')
     no_of_referred_users = models.PositiveIntegerField(default=0)
@@ -83,3 +83,10 @@ class AdminReferral(models.Model):
 
     def __str__(self):
         return str(self.user.wallet_address)
+
+
+class NodePayout(models.Model):
+    amount = models.PositiveIntegerField(default=0)
+
+    def __str__(self) -> str:
+        return self.amount

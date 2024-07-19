@@ -5,12 +5,11 @@ from StashAdmin.serializers import NodeSetupSerializer
 
 class ClientUserSerializer(serializers.ModelSerializer):
     referral_code = serializers.CharField(read_only=True)
-    # user_type = serializers.BooleanField(required=False)
     
     class Meta:
         model = ClientUser
         fields = '__all__'
-        read_only_fields = ['referral_code', 'maturity', 'total_deposit', 'referred_by', 'total_revenue', 'claimed_reward', 'generated_reward', 'user_type']
+        read_only_fields = ['referral_code', 'maturity', 'total_deposit', 'referred_by', 'total_revenue', 'claimed_reward', 'generated_reward']
 
     def validate_wallet_address(self, value):
         if ClientUser.objects.filter(wallet_address=value).exists():

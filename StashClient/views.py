@@ -95,23 +95,85 @@ class UserLoginViewset(viewsets.ViewSet):
         except ClientUser.DoesNotExist:
             return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
 
-
 class GetRefAdressViewset(viewsets.GenericViewSet, ListModelMixin):
+
     def list(self, request, *args, **kwargs):
         ref_code = request.query_params.get('ref')
         if not ref_code:
             return Response({"error": "Referral code is required"}, status=status.HTTP_400_BAD_REQUEST)
+        
         try:
-            user_with_referral_code = ClientUser.objects.get(
-                referral_code=ref_code)
+            user_with_referral_code = ClientUser.objects.get(referral_code=ref_code)
         except ClientUser.DoesNotExist:
             return Response({"error": "Invalid referral code"}, status=status.HTTP_400_BAD_REQUEST)
+        
         try:
-            node = NodeSetup.objects.first().node_id
+            admin_node = NodeSetup.objects.first().node_id
         except:
-            return Response({"error": "Invalid referral code"}, status=status.HTTP_400_BAD_REQUEST)
-        return Response({"wallet_address": user_with_referral_code.wallet_address, "node_id": node}, status=status.HTTP_200_OK)
-            
+            return Response({"error": "Invalid node setup"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        master_node_ref = MasterNode.objects.first()
+        master_node_ref_child_node = master_node_ref.master_node_id
+        master_node_ref_parent_node = master_node_ref.parent_node.master_node_id if master_node_ref.parent_node else None
+        main_ref_address = user_with_referral_code.wallet_address
+        first_referral_address = user_with_referral_code.referred_by.user.wallet_address
+
+        print("aaaaaaaaa")
+        while True:
+            referral_code = user_with_referral_code.referred_by.user.referral_code
+            # first_referral_address = user_with_referral_code.wallet_address
+
+            # if user_with_referral_code.referred_by
+            if referral_code in [master_node_ref_child_node, master_node_ref_parent_node, admin_node]:
+                print("Master node found!!!")
+                if referral_code == master_node_ref_child_node:
+                    print("childd")
+                    matched_key = "child"
+                    matched_value = master_node_ref_child_node
+                    node_address = ClientUser.objects.get(referral_code = master_node_ref_child_node).wallet_address
+                    break
+                elif referral_code == master_node_ref_parent_node:
+                    matched_key = "parent"
+                    matched_value = master_node_ref_parent_node
+                    node_address = ClientUser.objects.get(referral_code = master_node_ref_parent_node).wallet_address
+                    break
+                elif referral_code == admin_node:
+                    matched_key = "admin"
+                    matched_value = admin_node
+                    node_address = ClientUser.objects.get(referral_code = admin_node).wallet_address
+                    break
+
+            try:
+                user_with_referral_code = user_with_referral_code.referred_by.user
+            except AttributeError:
+            #     matched_key = "admin"
+            #     matched_value = admin_node
+            #     response_data = {
+            # "ref-address":main_ref_address,
+            # "node_address":node_address,
+            # "wallet_address": user_with_referral_code.wallet_address,
+            # "node_id": admin_node,
+            # "master_node_id": master_node_ref.master_node_id,
+            # matched_key:matched_value
+            # }
+                
+            #     return Response(response_data, status=status.HTTP_200_OK)
+
+        
+                return Response({"error": "Master node not found in referral chain"}, status=status.HTTP_404_NOT_FOUND)
+        
+        response_data = {
+            "ref-address":main_ref_address,
+            "first_referral": first_referral_address,
+            "node_address":node_address,
+            # "wallet_address": user_with_referral_code.wallet_address,
+            "node_id": admin_node,
+            # "master_node_id": master_node_ref.master_node_id,
+            matched_key:matched_value
+            }
+        
+        return Response(response_data, status=status.HTTP_200_OK)
+
 
 
 
@@ -438,13 +500,7 @@ class AuthorizedNodeViewset(viewsets.ModelViewSet):
     serializer_class = NodePassAuthorizedSerializer
 
     def create(self, request, *args, **kwargs):
-        # try:
-        #     node_id = request.query_params.get('node')
-        #     node = NodeSetup.objects.filter(node_id = node_id)
-        #     serializer = NodeSetupSerializer(node, many = True)
-        #     return Response(serializer.data, status=status.HTTP_200_OK)
-        # except:
-        #     return Response({"detail": "Node not found"}, status=status.HTTP_404_NOT_FOUND)
+        
         serializer = self.get_serializer(data = request.data)
         serializer.is_valid(raise_exception=True)
         ref_code = serializer.validated_data.get('referral_code')
@@ -455,6 +511,7 @@ class AuthorizedNodeViewset(viewsets.ModelViewSet):
         try:
             user_with_referral_code = ClientUser.objects.get(
                 referral_code=ref_code)
+            print("user", user_with_referral_code)
             try:
                 referral = Referral.objects.create(
                     user=user_with_referral_code)
