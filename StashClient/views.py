@@ -114,7 +114,6 @@ class GetRefAdressViewset(viewsets.GenericViewSet, ListModelMixin):
             return Response({"error": "Invalid node setup"}, status=status.HTTP_400_BAD_REQUEST)
         
         master_node_ref = MasterNode.objects.get(parent_node__isnull=False)
-        print("massss", master_node_ref)
         master_node_ref_child_node = master_node_ref.master_node_id
         master_node_ref_parent_node = master_node_ref.parent_node.master_node_id if master_node_ref.parent_node else None
         main_ref_address = user_with_referral_code.wallet_address
@@ -122,16 +121,8 @@ class GetRefAdressViewset(viewsets.GenericViewSet, ListModelMixin):
 
         while True:
             referral_code = user_with_referral_code.referred_by.user.referral_code
-            # first_referral_address = user_with_referral_code.wallet_address
-
-        # if user_with_referral_code.referred_by
-        # if referral_code in [master_node_ref_child_node, master_node_ref_parent_node, admin_node]:
-            print("Master node found!!!")
-            print("refeee", referral_code)
-            print("master", master_node_ref_parent_node, "pchildnodee", master_node_ref_child_node, )
 
             if referral_code == master_node_ref_child_node:
-                print("childd")
                 matched_key = "child"
                 matched_value = master_node_ref_child_node
                 node_address = ClientUser.objects.get(referral_code = master_node_ref_child_node).wallet_address
@@ -150,29 +141,13 @@ class GetRefAdressViewset(viewsets.GenericViewSet, ListModelMixin):
             try:
                 user_with_referral_code = user_with_referral_code.referred_by.user
             except AttributeError:
-            #     matched_key = "admin"
-        #     matched_value = admin_node
-        #     response_data = {
-        # "ref-address":main_ref_address,
-        # "node_address":node_address,
-        # "wallet_address": user_with_referral_code.wallet_address,
-        # "node_id": admin_node,
-        # "master_node_id": master_node_ref.master_node_id,
-        # matched_key:matched_value
-        # }
-            
-        #     return Response(response_data, status=status.HTTP_200_OK)
-
-    
                 return Response({"error": "Master node not found in referral chain"}, status=status.HTTP_404_NOT_FOUND)
     
         response_data = {
             "ref-address":main_ref_address,
             "first_referral": first_referral_address,
             "node_address":node_address,
-            # "wallet_address": user_with_referral_code.wallet_address,
             "node_id": admin_node,
-            # "master_node_id": master_node_ref.master_node_id,
             matched_key:matched_value
             }
         
@@ -230,121 +205,6 @@ class ReferralViewSet(viewsets.ModelViewSet):
         return Response({"no_of_referred_users": total_referred_users,
             "commission_earned": total_commission_earned})
 
-
-# class ClaimViewSet(viewsets.ModelViewSet):
-#     queryset = Transaction.objects.all()
-
-#     serializer_class = ClaimSerializer
-#     filter_backends = [filters.SearchFilter, DjangoFilterBackend]
-#     filterset_fields = ['sender__wallet_address',
-#                         'sender__referred_by__user__wallet_address', 'transaction_type']
-
-#     # def get_queryset(self):
-#     #     queryset = super().get_queryset()
-#     #     queryset = queryset.filter(transaction_type__in=[
-#     #                                'Reward Claim', 'SuperNode Boost', 'Generated SubNode', 'Stake & Swim Boost', 'ETH 2.0 Node'])
-#     #     wallet_address = self.request.query_params.get('address')
-#     #     if wallet_address:
-#     #         queryset = queryset.filter(
-#     #             sender__wallet_address__in=wallet_address)
-#     #     return queryset
-    
-#     def create(self, request):
-#         serializer = self.get_serializer(data=request.data)
-#         serializer.is_valid(raise_exception=True)
-#         wallet_address = serializer.validated_data.get('sender')
-#         amount = serializer.validated_data.get('amount')
-#         node_quantity = serializer.validated_data.get('node_quantity')
-        
-#         transaction_type = serializer.validated_data.pop('transaction_type')
-#         # block_id = serializer.validated_data.get('block_id')
-#         node_id = serializer.validated_data.get('node_id')
-#         node = NodeSetup.objects.get(node_id = node_id)
-
-#         sender = ClientUser.objects.get(wallet_address = wallet_address)
-#         if transaction_type == 'Claiming':
-            
-#             try:
-#                 referred_user_code = sender.referred_by.user.referral_code 
-#             except:
-#                 return Response({"Message": "Invalid referral code...."})
-                
-#             refered_user = sender.referred_by.user
-#             master_node = MasterNode.objects.filter(node = node).order_by('-pk')[0]
-
-#             referred_by_referral_code = sender.referred_by.user.referral_code
-#             print("masterrrr", master_node)
-
-#             if referred_by_referral_code == node.node_id:
-#                 print("admin reff")
-#                 claim_fee_per = node.reward_claim_percentage
-#                 claim_fee = amount * claim_fee_per/100
-#                 try:
-#                     node_partners = NodePartner.objects.filter(node = node)
-#                 except:
-#                     return Response({"Message": "No node partners found...."})
-#                 for partner in node_partners:
-#                     partner_ , created = ClientUser.objects.get_or_create(wallet_address = partner.partner_wallet_address)
-#                     partner_sender_object = ClientUser.objects.get(wallet_address = partner.partner_wallet_address)
-#                     Transaction.objects.create(sender=partner_sender_object, amount=claim_fee*partner.share/100, transaction_type='Reward Claim', **serializer.validated_data)
-#                 # Transaction.objects.create(sender=sender, amount=node_quantity * node.cost_per_node, transaction_type='ETH 2.0 Node', **serializer.validated_data)
-#                 Transaction.objects.create(sender=partner_sender_object, amount=amount, transaction_type='Generated SubNode', **serializer.validated_data)
-#             ### multiple nodes
-#             elif referred_by_referral_code == master_node.parent_node.master_node_id or (referred_by_referral_code == master_node.master_node_id and master_node.parent_node is None) :
-#                 print('Masternode 1 claim') 
-#                 master_node = MasterNode.objects.filter(node = node).order_by('-pk')[0]
-#                 print("master node", master_node.pk)
-#                 master_claim_fee_per = master_node.claim_fee_percentage
-#                 claim_fee = amount * master_claim_fee_per/100
-#                 partner_fees = claim_fee * 0.08
-#                 try:
-#                     node_partners = NodePartner.objects.filter(node = node)
-#                 except:
-#                     return Response({"Message": "No node partners found...."})
-#                 for partner in node_partners:
-#                     client , created = ClientUser.objects.get_or_create(wallet_address = partner.partner_wallet_address)
-#                     Transaction.objects.create(sender=partner.partner_wallet_address, amount=partner_fees*partner.share/100, transaction_type='Reward Claim')
-#                 # Transaction.objects.create(sender=sender, amount=stake_swim_quantity * node.booster_node_1_cost, transaction_type='Stake & Swim Boost')
-#                 Transaction.objects.create(sender=sender, amount=node_quantity * node.cost_per_node, transaction_type='ETH 2.0 Node')
-#                 # Transaction.objects.create(sender=sender, amount=supernode_quantity * node.booster_node_2_cost, transaction_type='SuperNode Boost')
-#                 Transaction.objects.create(sender=partner.partner_wallet_address, amount=amount, transaction_type='Generated SubNode')
-#                 # master_wallet = ClientUser.objects.create(wallet_address = master_node.wallet_address, user_type = 'MasterNode')
-#                 Transaction.objects.create(sender=master_node.wallet_address, amount=claim_fee*0.02, transaction_type='Reward Claim')
-
-#             elif referred_by_referral_code == master_node.master_node_id and master_node.parent_node is not None :
-#                 print('single master node')
-#                 # print("parent nodeeeeee")
-#                 master_node = MasterNode.objects.filter(node = node).order_by('-pk')[0]
-#                 master_claim_fee_per = master_node.claim_fee_percentage
-#                 claim_fee = amount * master_claim_fee_per/100
-#                 partner_fees = claim_fee * Decimal(0.06)
-#                 try:
-#                     node_partners = NodePartner.objects.filter(node = node)
-#                     if not node_partners.exists():
-#                         return Response({"Message": "No node partners found...."})
-
-#                     # print("partner", node_partners)
-#                 except NodePartner.DoesNotExist:
-#                     return Response({"Message": "No node partners found...."})
-#                 for partner in node_partners:
-#                     client , created = ClientUser.objects.get_or_create(wallet_address = partner.partner_wallet_address)
-#                     partner_wallet = ClientUser.objects.get(wallet_address = partner.partner_wallet_address)
-
-#                     Transaction.objects.create(sender=partner_wallet, amount=partner_fees*partner.share/100, transaction_type='Reward Claim')
-#                 # Transaction.objects.create(sender=sender, amount=stake_swim_quantity * node.booster_node_1_cost, transaction_type='Stake & Swim Boost')
-#                 # Transaction.objects.create(sender=sender, amount=node_quantity * node.cost_per_node, transaction_type='ETH 2.0 Node')
-#                 # Transaction.objects.create(sender=sender, amount=supernode_quantity * node.booster_node_2_cost, transaction_type='SuperNode Boost')
-#                 partner_wallet = ClientUser.objects.get(wallet_address = partner.partner_wallet_address)
-#                 print("partnerdd", partner_wallet)
-#                 Transaction.objects.create(sender=partner_wallet, amount=amount, transaction_type='Generated SubNode')
-#                 # master_wallet = cl.objects.create(wallet_address = master_node.wallet_address, user_type = 'MasterNode')
-#                 # master_wallet2 = AdminUser.objects.create(wallet_address = master_node.wallet_address, user_type = 'MasterNode')
-#                 master_user = ClientUser.objects.get(wallet_address = master_node.wallet_address)
-#                 Transaction.objects.create(sender=master_user, amount=claim_fee*Decimal(0.02), transaction_type='Reward Claim')
-#                 Transaction.objects.create(sender=master_user, amount=claim_fee*Decimal(0.02), transaction_type='Reward Claim')
-
-#             return Response({"Successfully Claimed"})
-#         return Response({"Successfully Claimed"})
 
 class ClaimViewSet(viewsets.ModelViewSet):
     queryset = Transaction.objects.all()
