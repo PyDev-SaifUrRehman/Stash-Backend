@@ -390,7 +390,6 @@ class ClaimViewSet(viewsets.ModelViewSet):
                 # MasterNode2 referral
                 claim_fee = amount * master_node.claim_fee_percentage / 100
                 self.distribute_to_partners(node, claim_fee * Decimal(0.06))
-                print("sennnnnnnn", sender)
                 Transaction.objects.create(sender=sender, amount=amount, transaction_type='Generated SubNode', **serializer.validated_data)
                 master_node_wallet = ClientUser.objects.get(wallet_address = master_node.wallet_address)
                 Transaction.objects.create(sender=master_node_wallet, amount=claim_fee * Decimal(0.02), transaction_type='Reward Claim')
