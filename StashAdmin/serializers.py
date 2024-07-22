@@ -50,11 +50,12 @@ class ParentMasterNodeSerializer(serializers.ModelSerializer):
             try:
                 admin_user = ClientUser.objects.get(
                     wallet_address=qp_wallet_address)
+                print("asd", admin_user.user_type)
             except ClientUser.DoesNotExist:
                 raise ValidationError(
                     "You don't have permission to perform this action.")
 
-            if admin_user.user_type != 'Admin' or admin_user.user_type == 'Manager' or admin_user.user_type == 'MasterNode':
+            if admin_user.user_type == 'Client':
                 raise ValidationError(
                     "You don't have permission to perform this action.")
             wallet_address = attrs['wallet_address'] 
@@ -108,7 +109,7 @@ class MasterNodeSerializer(serializers.ModelSerializer):
                 raise ValidationError(
                     "You don't have permission to perform this action.")
 
-            if admin_user.user_type != 'Admin' or admin_user.user_type == 'Manager' or admin_user.user_type == 'MasterNode':
+            if admin_user.user_type == 'Client':
                 raise ValidationError(
                     "You don't have permission to perform this action.")
             # return attrs
@@ -169,7 +170,7 @@ class NodeManagerSerializer(serializers.ModelSerializer):
                 raise ValidationError(
                     "You don't have permission to perform this action.")
 
-            if admin_user.user_type != 'Admin' or admin_user.user_type == 'Manager' or admin_user.user_type == 'MasterNode':
+            if admin_user.user_type == 'Client':
                 raise ValidationError(
                     "You don't have permission to perform this action.")
             return attrs
@@ -220,7 +221,8 @@ class NodePartnerSerializer(serializers.ModelSerializer):
                 raise ValidationError(
                     "You don't have permission to perform this action.")
 
-            if admin_user.user_type != 'Admin' or admin_user.user_type == 'Manager' or admin_user.user_type == 'MasterNode':
+            if admin_user.user_type == 'Client':
+
                 raise ValidationError(
                     "You don't have permission to perform this action.")
             return attrs
@@ -271,11 +273,12 @@ class NodeSetupSerializer(serializers.ModelSerializer):
             try:
                 admin_user = ClientUser.objects.get(
                     wallet_address=wallet_address_from_cookie)
+                print("user", admin_user.user_type)
             except ClientUser.DoesNotExist:
                 raise ValidationError(
                     "You don't have permission to perform this action.")
 
-            if admin_user.user_type != 'Admin' or admin_user.user_type == 'Manager' or admin_user.user_type == 'MasterNode':
+            if admin_user.user_type == 'Client':
                 raise ValidationError(
                     "You don't have permission to perform this action.")
             return attrs
@@ -364,7 +367,7 @@ class AdminReferralSerializer(serializers.ModelSerializer):
                 raise ValidationError(
                     "You don't have permission to perform this action.")
 
-            if admin_user.user_type != 'Admin' or admin_user.user_type == 'Manager' or admin_user.user_type == 'MasterNode':
+            if admin_user.user_type == 'Client':
                 raise ValidationError(
                     "You don't have permission to perform this action.")
             return attrs
@@ -391,7 +394,7 @@ class NodePayoutSerializer(serializers.ModelSerializer):
                 raise ValidationError(
                     "You don't have permission to perform this action.")
 
-            if admin_user.user_type != 'Admin' or admin_user.user_type == 'Manager' or admin_user.user_type == 'MasterNode':
+            if admin_user.user_type == 'Client':
                 raise ValidationError(
                     "You don't have permission to perform this action.")
             return attrs
