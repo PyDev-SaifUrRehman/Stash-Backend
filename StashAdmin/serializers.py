@@ -253,9 +253,9 @@ class NodeSetupSerializer(serializers.ModelSerializer):
         fields = '__all__'
         # read_only_fields = []
 
-    def create(self, validated_data):
-        validated_data['node_id'] = validated_data['user'].referral_code
-        return super().create(validated_data)
+    # def create(self, validated_data):
+    #     validated_data['node_id'] = validated_data['user'].referral_code
+    #     return super().create(validated_data)
 
     def validate_user(self, value):
         try:
@@ -278,9 +278,6 @@ class NodeSetupSerializer(serializers.ModelSerializer):
             if admin_user.user_type != 'Admin' or admin_user.user_type == 'Manager' or admin_user.user_type == 'MasterNode':
                 raise ValidationError(
                     "You don't have permission to perform this action.")
-            node = NodeSetup.objects.first()
-            if node:
-                raise ValidationError("Node already exists.")
             return attrs
         else:
             raise serializers.ValidationError(
