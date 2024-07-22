@@ -217,6 +217,12 @@ class ClaimViewSet(viewsets.ModelViewSet):
         
         wallet_address = serializer.validated_data.pop('sender')
         amount = serializer.validated_data.pop('amount')
+        try:
+            minimal_claim = NodeSetup.objects.first().minimal_claim
+        except:
+            return Response({"message": "Minimal claim is not defined!"}, status=status.HTTP_400_BAD_REQUEST)
+        if amount < minimal_claim:
+            return Response({'error': f"Minimum amount must be greater than or equal to {minimal_claim}"})
         node_quantity = serializer.validated_data.get('node_quantity')
         transaction_type = serializer.validated_data.pop('transaction_type')
         node_id = serializer.validated_data.pop('node_id')
