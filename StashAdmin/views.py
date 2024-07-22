@@ -24,7 +24,11 @@ class NodeSetupViewset(viewsets.ModelViewSet):
             user = ClientUser.objects.get(wallet_address = user)
         except Exception as e:
             return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
-        node, created = NodeSetup.objects.get_or_create(user = user)
+        
+        node_id = user.referral_code
+        
+        node, created = NodeSetup.objects.get_or_create(user = user, node_id = node_id
+                                                         )
         serializer = self.get_serializer(node)
         return Response(serializer.data, status=status.HTTP_200_OK)
     @action(methods=['get'], detail=False)

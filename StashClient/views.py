@@ -155,7 +155,6 @@ class GetRefAdressViewset(viewsets.GenericViewSet, ListModelMixin):
 
 
 
-
 class ClientWalletDetialViewset(viewsets.GenericViewSet, ListModelMixin):
 
     serializer_class = ClientUserSerializer
@@ -257,7 +256,7 @@ class ClaimViewSet(viewsets.ModelViewSet):
                 parent_node = master_node.parent_node
                 parent_node_wallet = ClientUser.objects.get(wallet_address = parent_node.wallet_address)
                 Transaction.objects.create(sender=parent_node_wallet, amount=claim_fee * Decimal(0.02), transaction_type='Reward Claim')
-
+            Transaction.objects.create(sender=sender, amount=amount, transaction_type='Generated SubNode', **serializer.validated_data)
             return Response({"Message": "Successfully Claimed"})
         return Response({"Message": "Invalid Transaction Type"})
 

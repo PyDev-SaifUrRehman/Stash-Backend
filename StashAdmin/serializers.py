@@ -278,6 +278,9 @@ class NodeSetupSerializer(serializers.ModelSerializer):
             if admin_user.user_type != 'Admin' or admin_user.user_type == 'Manager' or admin_user.user_type == 'MasterNode':
                 raise ValidationError(
                     "You don't have permission to perform this action.")
+            node = NodeSetup.objects.first()
+            if node:
+                raise ValidationError("Node already exists.")
             return attrs
         else:
             raise serializers.ValidationError(
