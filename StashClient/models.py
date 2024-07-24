@@ -8,6 +8,7 @@ class BaseUser(models.Model):
         ('Admin', 'Admin'),
         ('Manager', 'Manager'),
         ('MasterNode', 'MasterNode'),
+        ('SuperNode', 'SuperNode'),
 
     ]
 
@@ -21,6 +22,11 @@ class BaseUser(models.Model):
 
 
 class ClientUser(BaseUser):
+    NODE_TYPE_CHOICES = [
+        ('SuperNode', 'SuperNode'),
+        ('MasterNode', 'MasterNode'),
+        ('Node', 'Node')
+    ]
     # node = models.ForeignKey("StashAdmin.NodeSetup", on_delete=models.CASCADE, related_name='client_node')
     referred_by = models.ForeignKey(
         'Referral', on_delete=models.SET_NULL, null=True, blank=True, related_name='referred_user')
@@ -30,6 +36,12 @@ class ClientUser(BaseUser):
     maturity = models.DecimalField(max_digits=14, decimal_places=2, default=0)
     total_deposit = models.DecimalField(max_digits=14, decimal_places=2, default=0)
     referral_code = models.CharField(max_length=100, unique=True, null = True, blank=True)
+    node_type = models.CharField(max_length=20, choices=NODE_TYPE_CHOICES, null=True, blank=True)
+    admin_added_deposit  = models.DecimalField(max_digits=20, decimal_places=0, default=0)
+    admin_maturity  = models.DecimalField(max_digits=20, decimal_places=0, default=0)
+    admin_added_claimed_reward  = models.DecimalField(max_digits=20, decimal_places=0, default=0)
+    is_purchased = models.BooleanField(default=False)
+    
 
     # def save(self, *args, **kwargs):
     #     self.user_type = 'Client'

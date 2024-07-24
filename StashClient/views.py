@@ -13,7 +13,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 
 from .models import ClientUser, Referral, Transaction
 from .serializers import ClientUserSerializer, ReferralSerializer, TransactionSerializer, ClientWalletDetialSerailizer, ClaimSerializer, NodePassAuthorizedSerializer
-from .utils import generate_referral_code
+from .utils import generate_referral_code, get_chain_node_type
 from StashAdmin.models import BaseUser, AdminUser, NodePartner, NodeSetup, MasterNode
 from StashAdmin.serializers import NodeSetupSerializer
 import requests
@@ -217,12 +217,6 @@ class ClaimViewSet(viewsets.ModelViewSet):
         
         wallet_address = serializer.validated_data.pop('sender')
         amount = serializer.validated_data.pop('amount')
-        try:
-            minimal_claim = NodeSetup.objects.first().minimal_claim
-        except:
-            return Response({"message": "Minimal claim is not defined!"}, status=status.HTTP_400_BAD_REQUEST)
-        if amount < minimal_claim:
-            return Response({'error': f"Minimum amount must be greater than or equal to {minimal_claim}"})
         node_quantity = serializer.validated_data.get('node_quantity')
         transaction_type = serializer.validated_data.pop('transaction_type')
         node_id = serializer.validated_data.pop('node_id')
@@ -233,39 +227,36 @@ class ClaimViewSet(viewsets.ModelViewSet):
         print("sender", sender)
         
         if transaction_type == 'Claiming':
-            try:
-                referred_user_code = sender.referred_by.user.referral_code
-            except:
-                return Response({"Message": "Invalid referral code...."})
+            node_type = get_chain_node_type(sender)
+            if "error" in node_type:
+                return Response({"Message": node_type["error"]})
                 
-            referred_by_referral_code = sender.referred_by.user.referral_code
             master_node = MasterNode.objects.filter(node=node).order_by('-pk').first()
 
-            if referred_by_referral_code == node.node_id:
+            if node_type["type"] == "admin":
                 # Admin referral
                 claim_fee = amount * node.reward_claim_percentage / 100
                 self.distribute_to_partners(node, claim_fee)
-                Transaction.objects.create(sender=sender, amount=amount, transaction_type='Generated SubNode', **serializer.validated_data)
-            elif referred_by_referral_code == master_node.master_node_id and master_node.parent_node is None:
+                Transaction.objects.create(sender=sender, amount=amount, transaction_type='Reward Claim', **serializer.validated_data)
+            elif node_type["type"] == "child" and master_node.parent_node is None:
                 # MasterNode1 referral
                 claim_fee = amount * master_node.claim_fee_percentage / 100
                 self.distribute_to_partners(node, claim_fee * Decimal(0.08))
-                Transaction.objects.create(sender=sender, amount=amount, transaction_type='Generated SubNode', **serializer.validated_data)
-                Transaction.objects.create(sender=master_node.wallet_address, amount=claim_fee * Decimal(0.02), transaction_type='Reward Claim')
-            elif referred_by_referral_code == master_node.master_node_id and master_node.parent_node is not None:
+                Transaction.objects.create(sender=sender, amount=amount, transaction_type='Reward Claim', **serializer.validated_data)
+                Transaction.objects.create(sender=master_node.wallet_address, amount=claim_fee * Decimal(0.02), transaction_type='Generated SubNode')
+            elif node_type["type"] == "child" and master_node.parent_node is not None:
                 # MasterNode2 referral
                 claim_fee = amount * master_node.claim_fee_percentage / 100
                 self.distribute_to_partners(node, claim_fee * Decimal(0.06))
-                Transaction.objects.create(sender=sender, amount=amount, transaction_type='Generated SubNode', **serializer.validated_data)
-                master_node_wallet = ClientUser.objects.get(wallet_address = master_node.wallet_address)
-                Transaction.objects.create(sender=master_node_wallet, amount=claim_fee * Decimal(0.02), transaction_type='Reward Claim')
+                Transaction.objects.create(sender=sender, amount=amount, transaction_type='Reward Claim', **serializer.validated_data)
+                master_node_wallet = ClientUser.objects.get(wallet_address=master_node.wallet_address)
+                Transaction.objects.create(sender=master_node_wallet, amount=claim_fee * Decimal(0.02), transaction_type='Generated SubNode')
                 parent_node = master_node.parent_node
-                parent_node_wallet = ClientUser.objects.get(wallet_address = parent_node.wallet_address)
-                Transaction.objects.create(sender=parent_node_wallet, amount=claim_fee * Decimal(0.02), transaction_type='Reward Claim')
-            Transaction.objects.create(sender=sender, amount=amount, transaction_type='Generated SubNode', **serializer.validated_data)
+                parent_node_wallet = ClientUser.objects.get(wallet_address=parent_node.wallet_address)
+                Transaction.objects.create(sender=parent_node_wallet, amount=claim_fee * Decimal(0.02), transaction_type='Generated SubNode')
+            Transaction.objects.create(sender=sender, amount=amount, transaction_type='Reward Claim', **serializer.validated_data)
             return Response({"Message": "Successfully Claimed"})
         return Response({"Message": "Invalid Transaction Type"})
-
     def distribute_to_partners(self, node, claim_fee):
         try:
             node_partners = NodePartner.objects.filter(node=node)
@@ -274,7 +265,7 @@ class ClaimViewSet(viewsets.ModelViewSet):
         
         for partner in node_partners:
             partner_user, _ = ClientUser.objects.get_or_create(wallet_address=partner.partner_wallet_address)
-            Transaction.objects.create(sender=partner_user, amount=claim_fee * partner.share / 100, transaction_type='Reward Claim')
+            Transaction.objects.create(sender=partner_user, amount=claim_fee * partner.share / 100, transaction_type='Generated SubNode')
     
     def list(self, request, *args, **kwargs):
         wallet_address = request.query_params.get('walletadd')

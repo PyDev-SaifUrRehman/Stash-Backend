@@ -16,14 +16,20 @@ class AdminUser(BaseUser):
 class NodeSetup(models.Model):
     node_id = models.CharField(max_length=255)
     user = models.ForeignKey(ClientUser, on_delete=models.CASCADE, related_name='node_setup')
+    super_node_cost = models.PositiveIntegerField(default=20000)
+    master_node_cost = models.PositiveIntegerField(default=20000)
     cost_per_node = models.PositiveIntegerField(default=1000)
     booster_node_1_cost = models.PositiveIntegerField(default=500)
     booster_node_2_cost = models.PositiveIntegerField(default=500)
-    node_commission_percentage = models.DecimalField(max_digits=14, decimal_places=0, default=0)
+    node_commission_percentage = models.DecimalField(max_digits=3, decimal_places=0, default=0)
+    extra_super_node_commission = models.DecimalField(max_digits=3, decimal_places=0, default=0)
+    extra_master_node_commission = models.DecimalField(max_digits=3, decimal_places=0, default=0)
     stash_linode = models.DecimalField(max_digits=14, decimal_places=0,default= 0)
     amazon_quantum_ledger = models.DecimalField(max_digits=14, decimal_places=0,default=0)
     dex_grid_bot = models.DecimalField(max_digits=14, decimal_places=0, default=0)
-    reward_claim_percentage = models.DecimalField(max_digits=14, decimal_places=0, default=0)
+    reward_claim_percentage = models.DecimalField(max_digits=3, decimal_places=0, default=0)
+    extra_super_node_reward_claim_percentage = models.DecimalField(max_digits=3, decimal_places=0, default=0)
+    extra_master_node_reward_claim_percentage = models.DecimalField(max_digits=3, decimal_places=0, default=0)
     minimal_claim = models.DecimalField(max_digits=14, decimal_places=0, default=0)
     
     def __str__(self):
@@ -37,19 +43,25 @@ class NodePartner(models.Model):
 
     def __str__(self) -> str:
         return self.partner_wallet_address
-        
     
-class MasterNode(models.Model):
-    node = models.ForeignKey(NodeSetup, on_delete=models.CASCADE, related_name='master_node')
-    parent_node = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='sub_nodes')
-    master_node_id = models.CharField(max_length=255)
-    wallet_address = models.CharField(max_length=255)
-    node_pass_comm_percentage = models.DecimalField(max_digits=14, decimal_places=0)
-    sub_node_pass_comm_percentage = models.DecimalField(max_digits=14, decimal_places=0)
-    claim_fee_percentage =models.DecimalField(max_digits=14, decimal_places=0)
+
+class NodeSuperNode(models.Model):
+    node = models.ForeignKey(NodeSetup, on_delete=models.CASCADE, related_name='super_node' )
+    super_node = models.ForeignKey(ClientUser, on_delete=models.CASCADE, related_name='node_super_node')    
 
     def __str__(self) -> str:
-        return self.wallet_address
+        return self.super_node.wallet_address        
+    
+class MasterNode(models.Model):
+    node = models.ForeignKey(NodeSuperNode, on_delete=models.CASCADE, related_name='master_super_node')
+    # parent_node = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='sub_nodes')
+    master_node = models.ForeignKey(ClientUser, on_delete=models.CASCADE, related_name='master_user')
+    # node_pass_comm_percentage = models.DecimalField(max_digits=14, decimal_places=0)
+    # sub_node_pass_comm_percentage = models.DecimalField(max_digits=14, decimal_places=0)
+    # claim_fee_percentage =models.DecimalField(max_digits=14, decimal_places=0)
+
+    def __str__(self) -> str:
+        return self.master_node.wallet_address
 
 class NodeManager(models.Model):
     node = models.ForeignKey(NodeSetup, on_delete=models.CASCADE, related_name='node' )
@@ -90,3 +102,4 @@ class NodePayout(models.Model):
 
     def __str__(self) -> str:
         return self.amount
+    

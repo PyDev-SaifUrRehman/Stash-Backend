@@ -3,16 +3,17 @@ from django.db.models import Value, Sum, F
 from rest_framework import viewsets
 from rest_framework import status
 from rest_framework.decorators import action
+from rest_framework import mixins
 from rest_framework.response import Response
 
-from .models import MasterNode, NodeManager, NodePartner, NodeSetup, AdminUser, NodePayout
-from .serializers import NodeSetupSerializer, AdminUserSerializer, NodePartnerSerializer, MasterNodeSerializer, NodeManagerSerializer, NodePayoutSerializer
+from .models import MasterNode, NodeManager, NodePartner, NodeSetup, AdminUser, NodePayout, NodeSuperNode
+from .serializers import NodeSetupSerializer, AdminUserSerializer, NodePartnerSerializer, MasterNodeSerializer, NodeManagerSerializer, NodePayoutSerializer, AddNodeToAdminSerializer, NodeSuperNodeSerializer
 from StashClient.utils import generate_referral_code
 from django.core.exceptions import ObjectDoesNotExist
 
 from rest_framework import filters
 from django_filters.rest_framework import DjangoFilterBackend
-from StashClient.models import ClientUser, Transaction
+from StashClient.models import ClientUser, Transaction, Referral
 
 class NodeSetupViewset(viewsets.ModelViewSet):
     queryset = NodeSetup.objects.all()
@@ -106,28 +107,20 @@ class NodeMasterViewset(viewsets.ModelViewSet):
     serializer_class = MasterNodeSerializer
     # lookup_field = 'node__user__referral_code'
     filter_backends = [filters.SearchFilter, DjangoFilterBackend]
-    filterset_fields = ['node__user__referral_code']
+    # filterset_fields = ['node__user__referral_code']
     
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+    # def create(self, request, *args, **kwargs):
+    #     serializer = self.get_serializer(data=request.data)
+    #     serializer.is_valid(raise_exception=True)
         
-        node = serializer.validated_data['node']
-        master_node = MasterNode.objects.filter(node=node)
-        master_node_count = master_node.count()
+    #     node = serializer.validated_data['node']
         
-        if master_node_count >= 2:
-            return Response({"message": 'A node can only have two master nodes.'}, status=status.HTTP_200_OK)
         
-        if master_node_count == 1:
-            parent_node = master_node.first()
-            serializer.validated_data['parent_node'] = parent_node
-        
-        self.perform_create(serializer)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    #     self.perform_create(serializer)
+    #     return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-    def perform_create(self, serializer):
-        serializer.save()
+    # def perform_create(self, serializer):
+    #     serializer.save()
 
 class NodeManagerViewset(viewsets.ModelViewSet):
     queryset = NodeManager.objects.all()
@@ -187,3 +180,65 @@ class AdminClaimViewset(viewsets.ModelViewSet):
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class AddNodeToAdminViewset(viewsets.GenericViewSet, mixins.CreateModelMixin):
+    serializer_class = AddNodeToAdminSerializer
+
+    def create(self, request):
+
+        serializer = AddNodeToAdminSerializer(
+            data=request.data, context={'request': request})
+        new_user_referral_code = generate_referral_code()
+        serializer.is_valid(raise_exception=True)
+        wallet_address = serializer.validated_data.get('wallet_address')
+        node_quantity = serializer.validated_data.get('node_quantity')
+        stake_swim_quantity = serializer.validated_data.get('stake_swim_quantity')
+        supernode_quantity = serializer.validated_data.get('supernode_quantity')
+        node_pass = serializer.validated_data.get('node_pass')
+        # deposit_amount = serializer.validated_data.get('admin_added_deposit', 0)
+        maturity_amount = serializer.validated_data.get('admin_maturity', 0)
+        admin_added_claimed_reward = serializer.validated_data.get('admin_added_claimed_reward', 0)
+
+        sender, created = ClientUser.objects.get_or_create(wallet_address = wallet_address, admin_added_claimed_reward = admin_added_claimed_reward, maturity = maturity_amount, referral_code = new_user_referral_code,node_type = 'Node')
+        sender = ClientUser.objects.get(wallet_address = wallet_address)
+        print("sender", sender)
+        try:
+            referral_node_pass = ClientUser.objects.get(referral_code = node_pass)
+            try:
+                referral = Referral.objects.create(
+                    user=referral_node_pass)
+            except Referral.DoesNotExist:
+                return Response({"error": "Error to create ref."}, status=status.HTTP_400_BAD_REQUEST)
+            print("referral", referral_node_pass)
+            sender.referred_by = referral
+            sender.save()
+        except:
+            return Response({"messsage": "Invalid Node Pass."}, status = status.HTTP_400_BAD_REQUEST)
+        try:
+            node = NodeSetup.objects.first()
+            node_id = node.node_id
+            eth_node_price = node.cost_per_node
+            stake_swim_booster_price = node.booster_node_1_cost
+            supernode_booster_price = node.booster_node_2_cost
+            print("sender", sender  )
+
+            if node_quantity:
+                Transaction.objects.create(sender = sender, amount = node_quantity*eth_node_price, transaction_type = 'ETH 2.0 Node',node = node)
+            if supernode_booster_price:
+                Transaction.objects.create(sender = sender, amount = supernode_quantity*supernode_booster_price, transaction_type = 'SuperNode Boost',node = node)
+            if stake_swim_booster_price:
+                Transaction.objects.create(sender=sender, amount=stake_swim_quantity*stake_swim_booster_price, transaction_type='Stake & Swim Boost',node = node)
+        except Exception as e:
+            return Response({"message": f"something went wrong {e}"}, status=status.HTTP_400_BAD_REQUEST)
+        serializer_data = serializer.data
+        return Response(serializer_data, status=status.HTTP_201_CREATED)
+    
+
+class SuperNodeViewset(viewsets.ModelViewSet):
+    queryset = NodeSuperNode.objects.all()
+    serializer_class = NodeSuperNodeSerializer
+    # lookup_field = 'node__user__referral_code'
+    filter_backends = [filters.SearchFilter, DjangoFilterBackend]
+    filterset_fields = ['node__user__referral_code']
+    
