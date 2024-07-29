@@ -114,9 +114,9 @@ class GetRefAdressViewset(viewsets.GenericViewSet, ListModelMixin):
             return Response({"error": "Invalid node setup"}, status=status.HTTP_400_BAD_REQUEST)
         
         referral = user_with_referral_code.referred_by
-        super_node_ref = referral.super_node_ref.wallet_address
-        master_node_ref = referral.master_node_ref.wallet_address
-        sub_node_ref = referral.sub_node_ref.wallet_address
+        super_node_ref = getattr(referral.super_node_ref, 'wallet_address', "")
+        master_node_ref = getattr(referral.master_node_ref, 'wallet_address', "")
+        sub_node_ref = getattr(referral.sub_node_ref, 'wallet_address', "")
         admin_node_ref = admin_node
 
         response_data = {
@@ -434,9 +434,9 @@ class TransactionViewset(viewsets.ModelViewSet):
             # print("reffereddd",referred_sub_node.referred_by.commission_received)
 
             handle_commission_transfer(referred_sub_node, referral_commission_subnode_node, block_id, node_id, node, server_type, trx_hash,generated_subnode_type = 'GeneratedClientSubNode')
-            referred_sub_node.referred_by.mark_commission_received()
-            print("sssssss", referred_sub_node.referred_by)
-            referred_sub_node.referred_by.save()
+            referral = Referral.objects.get(user = referred_sub_node)
+            referral.mark_commission_received()
+            referral.save()
 
             # print("reffereddd",referred_sub_node.commission_received)
 
