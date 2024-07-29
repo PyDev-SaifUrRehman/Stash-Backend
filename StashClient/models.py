@@ -88,7 +88,9 @@ class Transaction(models.Model):
         ('Stake & Swim Boost', 'Stake & Swim Boost'),
         ('ETH 2.0 Node', 'ETH 2.0 Node'),
         ('Commission', 'Commission'),
-        ('Claiming', 'Claiming')
+        ('Claiming', 'Claiming'),
+        ('Generated SuperNode', 'Generated SuperNode'),
+        ('Generated MasterNode', 'Generated MasterNode')
     ]
 
     GENERATED_SUBNODE_TYPE = [

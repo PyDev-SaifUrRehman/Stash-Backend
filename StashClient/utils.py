@@ -53,10 +53,9 @@ def distribute_to_partners(node, claim_fee):
     return 
 
 from decimal import Decimal
-def handle_commission_transfer(referred_user, referral_commission, block_id, node_id, node, server_type, trx_hash):
+def handle_commission_transfer(referred_user, referral_commission, block_id, node_id, node, server_type, trx_hash, generated_subnode_type):
     referred_by_maturity = referred_user.maturity
     referral = referred_user.referred_by
-    print("referred", referred_user)
     if referred_by_maturity - referred_user.claimed_reward >= referral_commission:
         commission_amount = Decimal(referral_commission)
         referred_user.claimed_reward += commission_amount
@@ -73,7 +72,8 @@ def handle_commission_transfer(referred_user, referral_commission, block_id, nod
             trx_hash=trx_hash,
             stake_swim_quantity=0,
             supernode_quantity=0,
-            node_quantity=0
+            node_quantity=0,
+            generated_subnode_type = generated_subnode_type
         )
         referral.commission_transactions = commission_transaction
         referral.save()
@@ -97,7 +97,8 @@ def handle_commission_transfer(referred_user, referral_commission, block_id, nod
             trx_hash=trx_hash,
             stake_swim_quantity=0,
             supernode_quantity=0,
-            node_quantity=0
+            node_quantity=0,
+            generated_subnode_type = generated_subnode_type
         )
         referral.commission_transactions = commission_transaction
         referral.save()

@@ -445,32 +445,39 @@ class TransactionViewset(viewsets.ModelViewSet):
 
         if referral_commission_super_node:
             # Transaction.objects.create(sender=referred_super_node, amount=referral_commission_super_node, transaction_type='Generated SubNode', generated_subnode_type = 'GeneratedSuperSubNode', block_id = block_id, trx_hash = trx_hash, node_id = node_id, node = node, server_type = server_type)
-            handle_commission_transfer(referred_super_node, referral_commission_super_node, block_id, node_id, node, server_type, trx_hash)
+            handle_commission_transfer(referred_super_node, referral_commission_super_node, block_id, node_id, node, server_type, trx_hash, generated_subnode_type = 'GeneratedSuperSubNode')
 
 
         if referral_commission_master_node:
-            handle_commission_transfer(referred_master_node, referral_commission_master_node, block_id, node_id, node, server_type, trx_hash)
+            handle_commission_transfer(referred_master_node, referral_commission_master_node, block_id, node_id, node, server_type, trx_hash, generated_subnode_type = 'GeneratedMasterSubNode')
 
 
             # Transaction.objects.create(sender=referred_master_node, amount=referral_commission_master_node, transaction_type='Generated SubNode', generated_subnode_type = 'GeneratedMasterSubNode', block_id = block_id, trx_hash = trx_hash, node_id = node_id, node = node, server_type = server_type)
 
         if referral_commission_subnode_node:
-            handle_commission_transfer(referred_sub_node, referral_commission_subnode_node, block_id, node_id, node, server_type, trx_hash)
+            # print("reffereddd",referred_sub_node.referred_by.commission_received)
+
+            handle_commission_transfer(referred_sub_node, referral_commission_subnode_node, block_id, node_id, node, server_type, trx_hash,generated_subnode_type = 'GeneratedClientSubNode')
+            referred_sub_node.referred_by.mark_commission_received()
+            print("sssssss", referred_sub_node.referred_by)
+            referred_sub_node.referred_by.save()
+
+            # print("reffereddd",referred_sub_node.commission_received)
 
             # Transaction.objects.create(sender=referred_sub_node, amount=referral_commission_subnode_node, transaction_type='Generated SubNode', generated_subnode_type = 'GeneratedClientSubNode', block_id = block_id, trx_hash = trx_hash, node_id = node_id, node = node, server_type = server_type)
 
 
         if super_node_eth2_quantity:
-            Transaction.objects.create(sender=sender, amount=super_node_eth2, transaction_type='Generated SuperNode', block_id = block_id, trx_hash = trx_hash, node_id = node_id, node = node, server_type = server_type)
+            Transaction.objects.create(sender=sender, amount=super_node_eth2, transaction_type='Generated SuperNode', block_id = block_id, trx_hash = trx_hash, node_id = node_id, node = node, server_type = server_type, super_node_eth2 = super_node_eth2_quantity)
             sender.is_purchased = True
             sender.save()
             
         elif master_node_eth2_quantity:
-            Transaction.objects.create(sender=sender, amount=master_node_eth2, transaction_type='Generated SuperNode', block_id = block_id, trx_hash = trx_hash, node_id = node_id, node = node, server_type = server_type)
+            Transaction.objects.create(sender=sender, amount=master_node_eth2, transaction_type='Generated MasterNode', block_id = block_id, trx_hash = trx_hash, node_id = node_id, node = node, server_type = server_type, master_node_eth2 = master_node_eth2_quantity)
             sender.is_purchased = True
             sender.save()
         else:
-            Transaction.objects.create(sender=sender, amount=total_amount_node, transaction_type='ETH 2.0 Node', block_id = block_id, trx_hash = trx_hash, node_id = node_id, node = node, server_type = server_type)
+            Transaction.objects.create(sender=sender, amount=total_amount_node, node_quantity = node_quantity, transaction_type='ETH 2.0 Node', block_id = block_id, trx_hash = trx_hash, node_id = node_id, node = node, server_type = server_type)
 
         if stake_swim_quantity:
             Transaction.objects.create(sender=sender, amount=total_amount_stake, transaction_type='Stake & Swim Boost', block_id = block_id, trx_hash = trx_hash, node_id = node_id, node = node, server_type = server_type)

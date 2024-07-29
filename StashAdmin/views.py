@@ -267,25 +267,46 @@ class GetRevenueSearchViewset(viewsets.GenericViewSet, mixins.ListModelMixin):
                 
             transactions = Transaction.objects.filter(sender=user)
             
-            subnode_generated_count = transactions.filter(generated_subnode_type='GeneratedClientSubNode').count()
+            subnode_generated = transactions.filter(generated_subnode_type='GeneratedClientSubNode')
+            subnode_generated_count = subnode_generated.count()
             subnode_first_transaction = transactions.filter(generated_subnode_type='GeneratedClientSubNode').order_by('timestamp').first()
             subnode_generated_timestamp = subnode_first_transaction.timestamp if subnode_first_transaction else 0
+            subnode_generated_revenue = subnode_generated.aggregate(subnode_generated_revenue = Sum('amount'))['subnode_generated_revenue'] or 0
             
-            master_node_generated_count = transactions.filter(generated_subnode_type='GeneratedMasterSubNode').count()
+
+            master_node_generated = transactions.filter(generated_subnode_type='GeneratedMasterSubNode')
+            master_node_generated_count = master_node_generated.count()
             master_first_transaction = transactions.filter(generated_subnode_type='GeneratedMasterSubNode').order_by('timestamp').first()
             master_generated_timestamp = master_first_transaction.timestamp if master_first_transaction else 0
+            master_node_generated_revenue = master_node_generated.aggregate(master_node_generated_revenue = Sum('amount'))['master_node_generated_revenue'] or 0
+
             
-            super_node_generated_count = transactions.filter(generated_subnode_type='GeneratedSuperSubNode').count()
-            super_first_transaction = transactions.filter(generated_subnode_type='GeneratedSuperSubNode').order_by('timestamp').first()
+            super_node_generated = transactions.filter(generated_subnode_type='GeneratedSuperSubNode')
+            super_node_generated_count = super_node_generated.count()
+            super_first_transaction = super_node_generated.order_by('timestamp').first()
             super_node_generated_timestamp = super_first_transaction.timestamp if super_first_transaction else 0
+            super_node_generated_revenue = super_node_generated.aggregate(super_node_generated_revenue = Sum('amount'))['super_node_generated_revenue'] or 0
+
+            total_sub_nodes = Transaction.objects.filter(transaction_type = 'ETH 2.0 Node').aggregate(total_sub_nodes = Sum('node_quantity'))['total_sub_nodes'] or 0
+            total_master_nodes = Transaction.objects.filter(transaction_type = 'Generated MasterNode').count()
+            total_super_nodes = Transaction.objects.filter(transaction_type = 'Generated SuperNode').count()
+
+            generated_revenue = Transaction.objects.filter(transaction_type__in=['Generated SubNode', 'Generated MasterNode', 'Generated SuperNode']).aggregate(revenue = Sum('amount'))['revenue'] or 0
             
             return Response({
+                'total_sub_nodes': total_sub_nodes,
+                'total_master_nodes': total_master_nodes,
+                'total_super_nodes': total_super_nodes,
+                'generated_revenue': generated_revenue,
                 'subnode_generated_count': subnode_generated_count, 
                 'subnode_generated_timestamp': subnode_generated_timestamp, 
+                'subnode_generated_revenue': subnode_generated_revenue,
                 'master_node_generated_count': master_node_generated_count, 
                 'master_generated_timestamp': master_generated_timestamp, 
+                'master_node_generated_revenue': master_node_generated_revenue,
                 'super_node_generated_count': super_node_generated_count, 
-                'super_node_generated_timestamp': super_node_generated_timestamp
+                'super_node_generated_timestamp': super_node_generated_timestamp,
+                'super_node_generated_revenue': super_node_generated_revenue
             })
         except ClientUser.DoesNotExist:
             return Response({'message': 'User not found.'})
