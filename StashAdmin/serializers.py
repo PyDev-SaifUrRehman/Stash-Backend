@@ -100,6 +100,19 @@ class MasterNodeSerializer(serializers.ModelSerializer):
             user_with_referral_code = ClientUser.objects.get(referral_code=super_node_ref)
             referral, _ = Referral.objects.get_or_create(user=user_with_referral_code)
 
+            if referral.user.user_type == 'SuperNode':
+                referral.super_node_ref = referral.user
+                referral.save()
+            if referral.user.user_type == 'MasterNode':
+                referral.super_node_ref = referral.user.referred_by.user
+                referral.master_node_ref = referral.user
+                referral.save()
+            if referral.user.user_type == 'Client':
+                referral.super_node_ref = referral.user.referred_by.super_node_ref
+                referral.master_node_ref = referral.user.referred_by.master_node_ref
+                referral.sub_node_ref = referral.user
+                referral.save()
+
             master_node, created = ClientUser.objects.get_or_create(
                 wallet_address=master_node_address, 
                 user_type='MasterNode', 
@@ -425,9 +438,23 @@ class NodeSuperNodeSerializer(serializers.ModelSerializer):
             try:
                 user_with_referral_code = ClientUser.objects.get(
                 referral_code=referred_by_code)
+                
                 try:
                     referral = Referral.objects.create(
                         user=user_with_referral_code)
+                    if referral.user.user_type == 'SuperNode':
+                        referral.super_node_ref = referral.user
+                        referral.save()
+                    if referral.user.user_type == 'MasterNode':
+                        referral.super_node_ref = referral.user.referred_by.user
+                        referral.master_node_ref = referral.user
+                        referral.save()
+                    if referral.user.user_type == 'Client':
+                        referral.super_node_ref = referral.user.referred_by.super_node_ref
+                        referral.master_node_ref = referral.user.referred_by.master_node_ref
+                        referral.sub_node_ref = referral.user
+                        referral.save()
+                                
                 except Referral.DoesNotExist:
                     raise serializers.ValidationError("Error to create ref.")
             except ClientUser.DoesNotExist:
@@ -438,7 +465,7 @@ class NodeSuperNodeSerializer(serializers.ModelSerializer):
             supernode = ClientUser.objects.get(wallet_address = value)
             if super_node:
                 return super_node
-        except:
-            raise serializers.ValidationError("Not valid Super Node")
+        except Exception as e:
+            raise serializers.ValidationError(f"Not valid Super Node {e}")
         
     

@@ -1,5 +1,4 @@
 from django.db import models
-# from StashAdmin.models import NodeSetup
 
 class BaseUser(models.Model):
 
@@ -27,7 +26,6 @@ class ClientUser(BaseUser):
         ('MasterNode', 'MasterNode'),
         ('Node', 'Node')
     ]
-    # node = models.ForeignKey("StashAdmin.NodeSetup", on_delete=models.CASCADE, related_name='client_node')
     referred_by = models.ForeignKey(
         'Referral', on_delete=models.SET_NULL, null=True, blank=True, related_name='referred_user')
     generated_reward = models.DecimalField(max_digits=14, decimal_places=2, default=0)
@@ -41,23 +39,7 @@ class ClientUser(BaseUser):
     admin_maturity  = models.DecimalField(max_digits=20, decimal_places=0, default=0)
     admin_added_claimed_reward  = models.DecimalField(max_digits=20, decimal_places=0, default=0)
     is_purchased = models.BooleanField(default=False)
-    
 
-    # def save(self, *args, **kwargs):
-    #     self.user_type = 'Client'
-    #     super().save(*args, **kwargs)
-
-    # def update_balance(self):
-    #     try:
-    #         referral = self.referral
-    #         print("refff", referral)
-    #         if referral:
-    #             self.balance = self.seven_day_profit + referral.commission_earned
-    #         else:
-    #             self.balance = self.seven_day_profit
-    #         self.save()
-    #     except:
-    #         pass
 
     def __str__(self):
         return str(self.wallet_address) + " referralcode " + str(self.referral_code) + " by "+ str(self.referred_by)
@@ -72,6 +54,10 @@ class Referral(models.Model):
     commission_earned = models.DecimalField(
         max_digits=14, decimal_places=2, default=0)
     commission_received = models.BooleanField(default=False)
+    super_node_ref = models.ForeignKey(ClientUser, on_delete= models.CASCADE, related_name="super_node_ref", null= True, blank= True)
+    master_node_ref = models.ForeignKey(ClientUser, on_delete= models.CASCADE, related_name="master_node_ref", null= True, blank= True)
+    sub_node_ref = models.ForeignKey(ClientUser, on_delete= models.CASCADE, related_name="subnode_ref", null= True, blank= True)
+
     # master_node = models.CharField(max_length=50, null=True, blank=True)
 
     def increase_referred_users(self):
@@ -105,11 +91,17 @@ class Transaction(models.Model):
         ('Claiming', 'Claiming')
     ]
 
+    GENERATED_SUBNODE_TYPE = [
+        ('GeneratedSuperSubNode', 'GeneratedSuperSubNode'),
+        ('GeneratedMasterSubNode', 'GeneratedMasterSubNode'),
+        ('GeneratedClientSubNode', 'GeneratedClientMasterSubNode')
+    ]
+
     sender = models.ForeignKey(
         ClientUser, on_delete=models.CASCADE, related_name='transactions')
     block_id = models.PositiveIntegerField(null=True, blank=True)
     node = models.ForeignKey("StashAdmin.NodeSetup", on_delete=models.CASCADE, null=True, blank=True, related_name='trx_node')
-    node_quantity = models.PositiveIntegerField(null=True, blank= True, default=1)
+    node_quantity = models.PositiveIntegerField(null=True, blank= True, default=0)
     stake_swim_quantity = models.PositiveIntegerField(null= True, blank= True, default=0)
     amount = models.DecimalField(max_digits=14, decimal_places=2, default=0)
     supernode_quantity = models.PositiveIntegerField(null = True, blank= True, default=0)
@@ -119,6 +111,9 @@ class Transaction(models.Model):
     trx_hash = models.CharField(max_length=255, null=True, blank=True)
     transaction_type = models.CharField(max_length=255, choices=TRANSACTION_TYPE)
     setup_charges = models.PositiveIntegerField(null = True, blank = True, default=100)
+    generated_subnode_type = models.CharField(choices=GENERATED_SUBNODE_TYPE, max_length=255, null = True, blank= True)
+    master_node_eth2 = models.PositiveIntegerField(null=True, blank= True, default=0)
+    super_node_eth2 = models.PositiveIntegerField(null=True, blank= True, default = 0)
 
     def __str__(self):
         return f"{self.sender}- {self.transaction_type}"

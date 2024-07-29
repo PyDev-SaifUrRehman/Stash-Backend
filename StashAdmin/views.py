@@ -212,6 +212,19 @@ class AddNodeToAdminViewset(viewsets.GenericViewSet, mixins.CreateModelMixin):
                 return Response({"error": "Error to create ref."}, status=status.HTTP_400_BAD_REQUEST)
             print("referral", referral_node_pass)
             sender.referred_by = referral
+            if referral.user.user_type == 'SuperNode':
+                referral.super_node_ref = referral.user
+                referral.save()
+            if referral.user.user_type == 'MasterNode':
+                referral.super_node_ref = referral.user.referred_by.user
+                referral.master_node_ref = referral.user
+                referral.save()
+            if referral.user.user_type == 'Client':
+                referral.super_node_ref = referral.user.referred_by.super_node_ref
+                referral.master_node_ref = referral.user.referred_by.master_node_ref
+                referral.sub_node_ref = referral.user
+                referral.save()
+                        
             sender.save()
         except:
             return Response({"messsage": "Invalid Node Pass."}, status = status.HTTP_400_BAD_REQUEST)
@@ -242,3 +255,39 @@ class SuperNodeViewset(viewsets.ModelViewSet):
     filter_backends = [filters.SearchFilter, DjangoFilterBackend]
     filterset_fields = ['node__user__referral_code']
     
+class GetRevenueSearchViewset(viewsets.GenericViewSet, mixins.ListModelMixin):
+
+    def list(self, request, *args, **kwargs):
+        ref = request.query_params.get('ref')
+        try:
+            user = ClientUser.objects.get(referral_code=ref)
+            
+            if user.user_type == 'Client':
+                return Response({'message': 'Client is not allowed'})
+                
+            transactions = Transaction.objects.filter(sender=user)
+            
+            subnode_generated_count = transactions.filter(generated_subnode_type='GeneratedClientSubNode').count()
+            subnode_first_transaction = transactions.filter(generated_subnode_type='GeneratedClientSubNode').order_by('timestamp').first()
+            subnode_generated_timestamp = subnode_first_transaction.timestamp if subnode_first_transaction else 0
+            
+            master_node_generated_count = transactions.filter(generated_subnode_type='GeneratedMasterSubNode').count()
+            master_first_transaction = transactions.filter(generated_subnode_type='GeneratedMasterSubNode').order_by('timestamp').first()
+            master_generated_timestamp = master_first_transaction.timestamp if master_first_transaction else 0
+            
+            super_node_generated_count = transactions.filter(generated_subnode_type='GeneratedSuperSubNode').count()
+            super_first_transaction = transactions.filter(generated_subnode_type='GeneratedSuperSubNode').order_by('timestamp').first()
+            super_node_generated_timestamp = super_first_transaction.timestamp if super_first_transaction else 0
+            
+            return Response({
+                'subnode_generated_count': subnode_generated_count, 
+                'subnode_generated_timestamp': subnode_generated_timestamp, 
+                'master_node_generated_count': master_node_generated_count, 
+                'master_generated_timestamp': master_generated_timestamp, 
+                'super_node_generated_count': super_node_generated_count, 
+                'super_node_generated_timestamp': super_node_generated_timestamp
+            })
+        except ClientUser.DoesNotExist:
+            return Response({'message': 'User not found.'})
+        except Exception as e:
+            return Response({"message": f"Error Occurred! {e}"})

@@ -42,12 +42,9 @@ class TransactionSerializer(serializers.ModelSerializer):
     node = serializers.CharField()
     node_id = serializers.CharField(read_only = True)
     
-    # amount = serializers.SerializerMethodField()
-    # node = NodeSetupSerializer()
-
     class Meta:
         model = Transaction
-        fields = ['sender','node_id', 'transaction_type','amount', 'trx_hash', 'server_type', 'timestamp', 'supernode_quantity', 'stake_swim_quantity', 'node_quantity', 'node', 'block_id']
+        fields = ['sender','node_id', 'transaction_type','amount', 'trx_hash', 'server_type', 'timestamp', 'supernode_quantity', 'stake_swim_quantity', 'setup_charges', 'node_quantity', 'node', 'block_id', 'master_node_eth2', 'super_node_eth2']
         read_only_fields = ['amount']
 
     def validate_node(self, value):
@@ -58,23 +55,6 @@ class TransactionSerializer(serializers.ModelSerializer):
         except:
             raise serializers.ValidationError("No node with this Id")
         
-    def to_representation(self, instance):
-        representation = super().to_representation(instance)
-        representation['node_id'] = instance.node.node_id if instance.node else None
-        return representation
-    
-
-    # def get_amount(self, validated_data):
-    #     node = validated_data["node"]
-    #     node_quantity = validated_data.get('node_quantity')
-    #     stake_swim_quantity = validated_data.get('stake_swim_quantity')
-    #     supernode_quantity = validated_data.get('supernode_quantity')
-    #     cost_per_node = node.cost_per_node
-    #     booster_node_1_cost = node.booster_node_1_cost
-    #     booster_node_2_cost = node.booster_node_2_cost
-    #     amount = node_quantity * cost_per_node + stake_swim_quantity * booster_node_1_cost + supernode_quantity * booster_node_2_cost
-    #     return amount
-    
 
 class ReferralSerializer(serializers.ModelSerializer):
     commission_earned = serializers.DecimalField(
@@ -87,23 +67,24 @@ class ReferralSerializer(serializers.ModelSerializer):
                   'no_of_referred_users']
 
 
-class ClaimSerializer(serializers.Serializer):
-    sender = serializers.CharField()
-    amount = serializers.DecimalField(max_digits=10, decimal_places=2)
-    node_id = serializers.CharField(max_length = 50)
-    transaction_type = serializers.CharField()
+class ClaimSerializer(serializers.ModelSerializer):
+    sender = AddressToUserField(
+        queryset=ClientUser.objects.all())
+    node = serializers.CharField()
+    node_id = serializers.CharField(read_only = True)
 
     class Meta:
         model = Transaction
-        fields = ['sender','amount', 'node_id', 'transaction_type']
+        fields = ['sender','node_id', 'transaction_type','amount', 'trx_hash', 'node']
 
-
-    def validate_sender(self, value):
-        if ClientUser.objects.filter(wallet_address=value).exists():
-            return value
-        else:
-            raise serializers.ValidationError("User with this wallet address does not exist")
-
+    def validate_node(self, value):
+        try:
+            node = NodeSetup.objects.get(node_id = value)
+            if node:
+                return node
+        except:
+            raise serializers.ValidationError("No node with this Id")
+        
 
 class NodePassAuthorizedSerializer(serializers.Serializer):
     user_wallet_address = serializers.CharField()

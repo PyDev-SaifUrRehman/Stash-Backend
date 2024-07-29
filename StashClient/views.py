@@ -13,7 +13,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 
 from .models import ClientUser, Referral, Transaction
 from .serializers import ClientUserSerializer, ReferralSerializer, TransactionSerializer, ClientWalletDetialSerailizer, ClaimSerializer, NodePassAuthorizedSerializer
-from .utils import generate_referral_code, get_chain_node_type
+from .utils import generate_referral_code, get_chain_node_type, distribute_to_partners, handle_commission_transfer
 from StashAdmin.models import BaseUser, AdminUser, NodePartner, NodeSetup, MasterNode
 from StashAdmin.serializers import NodeSetupSerializer
 import requests
@@ -211,61 +211,83 @@ class ClaimViewSet(viewsets.ModelViewSet):
     filter_backends = [filters.SearchFilter, DjangoFilterBackend]
     filterset_fields = ['sender__wallet_address', 'sender__referred_by__user__wallet_address', 'transaction_type']
 
-    def create(self, request):
+    def create(self, request, *args, **kwargs):
+        
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        
-        wallet_address = serializer.validated_data.pop('sender')
-        amount = serializer.validated_data.pop('amount')
-        node_quantity = serializer.validated_data.get('node_quantity')
-        transaction_type = serializer.validated_data.pop('transaction_type')
-        node_id = serializer.validated_data.pop('node_id')
-        
-        node = NodeSetup.objects.get(node_id=node_id)
-        print("wallet", wallet_address)
-        sender = ClientUser.objects.get(wallet_address=wallet_address)
-        print("sender", sender)
-        
-        if transaction_type == 'Claiming':
-            node_type = get_chain_node_type(sender)
-            if "error" in node_type:
-                return Response({"Message": node_type["error"]})
-                
-            master_node = MasterNode.objects.filter(node=node).order_by('-pk').first()
+        sender = serializer.validated_data['sender']
+        user_referral = sender.referred_by
+        node = serializer.validated_data['node']
+        total_amount = serializer.validated_data['amount']
+        transaction_type = serializer.validated_data['transaction_type']
+        # node_quantity = serializer.validated_data.get('node_quantity')
+        block_id = serializer.validated_data.get('block_id')
+        # setup_charges = serializer.validated_data.get('setup_charges', 100)
+        # server_type = serializer.validated_data.get('server_type')
+        trx_hash = serializer.validated_data.get('trx_hash')
+        # stake_swim_quantity = serializer.validated_data.get('stake_swim_quantity', 0)
+        # supernode_quantity = serializer.validated_data.get('supernode_quantity', 0)
 
-            if node_type["type"] == "admin":
-                # Admin referral
-                claim_fee = amount * node.reward_claim_percentage / 100
-                self.distribute_to_partners(node, claim_fee)
-                Transaction.objects.create(sender=sender, amount=amount, transaction_type='Reward Claim', **serializer.validated_data)
-            elif node_type["type"] == "child" and master_node.parent_node is None:
-                # MasterNode1 referral
-                claim_fee = amount * master_node.claim_fee_percentage / 100
-                self.distribute_to_partners(node, claim_fee * Decimal(0.08))
-                Transaction.objects.create(sender=sender, amount=amount, transaction_type='Reward Claim', **serializer.validated_data)
-                Transaction.objects.create(sender=master_node.wallet_address, amount=claim_fee * Decimal(0.02), transaction_type='Generated SubNode')
-            elif node_type["type"] == "child" and master_node.parent_node is not None:
-                # MasterNode2 referral
-                claim_fee = amount * master_node.claim_fee_percentage / 100
-                self.distribute_to_partners(node, claim_fee * Decimal(0.06))
-                Transaction.objects.create(sender=sender, amount=amount, transaction_type='Reward Claim', **serializer.validated_data)
-                master_node_wallet = ClientUser.objects.get(wallet_address=master_node.wallet_address)
-                Transaction.objects.create(sender=master_node_wallet, amount=claim_fee * Decimal(0.02), transaction_type='Generated SubNode')
-                parent_node = master_node.parent_node
-                parent_node_wallet = ClientUser.objects.get(wallet_address=parent_node.wallet_address)
-                Transaction.objects.create(sender=parent_node_wallet, amount=claim_fee * Decimal(0.02), transaction_type='Generated SubNode')
-            Transaction.objects.create(sender=sender, amount=amount, transaction_type='Reward Claim', **serializer.validated_data)
-            return Response({"Message": "Successfully Claimed"})
-        return Response({"Message": "Invalid Transaction Type"})
-    def distribute_to_partners(self, node, claim_fee):
-        try:
-            node_partners = NodePartner.objects.filter(node=node)
-        except NodePartner.DoesNotExist:
-            return Response({"Message": "No node partners found...."})
+        # total_amount_node = ((node_quantity * node.cost_per_node))
+        # total_amount_stake = stake_swim_quantity * node.booster_node_1_cost if stake_swim_quantity else 0
+        # total_amount_super = supernode_quantity * node.booster_node_2_cost if supernode_quantity else 0
+        # total_amount = total_amount_node + total_amount_stake + total_amount_super
         
-        for partner in node_partners:
-            partner_user, _ = ClientUser.objects.get_or_create(wallet_address=partner.partner_wallet_address)
-            Transaction.objects.create(sender=partner_user, amount=claim_fee * partner.share / 100, transaction_type='Generated SubNode')
+
+        node_id = serializer.validated_data.get('node_id')
+        node = serializer.validated_data.get('node')
+        referral_commission = total_amount * node.reward_claim_percentage/100
+        print("refff", referral_commission)
+        if total_amount < node.minimal_claim:
+            return Response({"message": f"Minimal claim is {node.minimal_claim}"})
+
+        try:
+            referred_by_user = sender.referred_by
+            referred_super_node = referred_by_user.super_node_ref
+            referred_master_node = referred_by_user.master_node_ref
+            admin_user = node.user
+
+        except AttributeError:
+            referred_by_user = None
+            referred_super_node = None
+            referred_master_node = None
+
+            if not referred_by_user:
+                return Response({'message': 'User dont have referral'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if referred_super_node:
+            if referred_master_node:
+                referral_commission_super_node = referral_commission * node.extra_super_node_reward_claim_percentage/100
+                referral_commission_master_node = referral_commission * node.extra_master_node_reward_claim_percentage/100
+                referral_commission_admin_user = referral_commission - referral_commission_super_node - referral_commission_master_node
+            else:
+                referral_commission_super_node = referral_commission * node.extra_super_node_reward_claim_percentage/100
+                referral_commission_admin_user = referral_commission - referral_commission_super_node
+        
+        elif referred_master_node:
+                referral_commission_master_node = referral_commission * node.extra_master_node_reward_claim_percentage/100
+                referral_commission_admin_user = referral_commission  - referral_commission_master_node
+
+
+        else:
+            referral_commission_admin_user = referral_commission 
+
+        if referral_commission_super_node:
+            Transaction.objects.create(sender=referred_super_node, amount=referral_commission_super_node, transaction_type='Generated SubNode', generated_subnode_type = 'GeneratedSuperSubNode', trx_hash = trx_hash, node_id = node_id, node = node, block_id = block_id)
+
+
+        if referral_commission_master_node:
+
+            Transaction.objects.create(sender=referred_master_node, amount=referral_commission_master_node, transaction_type='Generated SubNode', generated_subnode_type = 'GeneratedMasterSubNode', trx_hash = trx_hash, node_id = node_id, node = node, block_id = block_id)
+
+        if referral_commission_admin_user:
+
+            Transaction.objects.create(sender=admin_user, amount=referral_commission_admin_user, transaction_type='Generated SubNode', generated_subnode_type = 'GeneratedAdminSubNode', trx_hash = trx_hash, node_id = node_id, node = node, block_id = block_id)
+
+
+        Transaction.objects.create(sender=sender, amount=total_amount, transaction_type='Reward Claim', trx_hash = trx_hash, node_id = node_id, node = node, block_id = block_id)
+
+        return Response({'message': 'Transaction created successfully'})
     
     def list(self, request, *args, **kwargs):
         wallet_address = request.query_params.get('walletadd')
@@ -300,132 +322,266 @@ class TransactionViewset(viewsets.ModelViewSet):
     
 
     def create(self, request, *args, **kwargs):
+        
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         sender = serializer.validated_data['sender']
         user_referral = sender.referred_by
         node = serializer.validated_data['node']
-        amount = serializer.validated_data['node_quantity']
+        amount = serializer.validated_data.get('node_quantity', 0)
         transaction_type = serializer.validated_data['transaction_type']
-        commission_percentage = node.node_commission_percentage
-        node_quantity = serializer.validated_data.get('node_quantity')
+        node_quantity = serializer.validated_data.get('node_quantity', 0)
         block_id = serializer.validated_data.get('block_id')
-        setup_charges = serializer.validated_data.get('setup_charges')
+        setup_charges = serializer.validated_data.get('setup_charges', 100)
         server_type = serializer.validated_data.get('server_type')
         trx_hash = serializer.validated_data.get('trx_hash')
         stake_swim_quantity = serializer.validated_data.get('stake_swim_quantity', 0)
         supernode_quantity = serializer.validated_data.get('supernode_quantity', 0)
-        
-        setup_charges = 100
-        total_amount_node = ((node_quantity * node.cost_per_node))
+        master_node_eth2_quantity = serializer.validated_data.get('master_node_eth2', 0)
+        super_node_eth2_quantity = serializer.validated_data.get('super_node_eth2', 0)
+        if master_node_eth2_quantity :
+            if sender.user_type != 'MasterNode':
+                return Response({"message": "User is not masternode"})
+            
+        if super_node_eth2_quantity :
+            if sender.user_type != 'SuperNode':
+                return Response({"message": "User is not Supernode"})
+
+        total_amount_node = node_quantity * node.cost_per_node if node_quantity else 0
         total_amount_stake = stake_swim_quantity * node.booster_node_1_cost if stake_swim_quantity else 0
         total_amount_super = supernode_quantity * node.booster_node_2_cost if supernode_quantity else 0
-
-        total_amount = total_amount_node + total_amount_stake + total_amount_super + setup_charges
+        master_node_eth2 = master_node_eth2_quantity * node.master_node_cost if master_node_eth2_quantity else 0
+        super_node_eth2 = super_node_eth2_quantity * node.super_node_cost if super_node_eth2_quantity else 0
+        total_amount = total_amount_node + total_amount_stake + total_amount_super + master_node_eth2 + super_node_eth2
       
         node_id = serializer.validated_data.get('node_id')
         node = serializer.validated_data.get('node')
-        referral_commission = total_amount_node * node.node_commission_percentage/100
-        master_node = MasterNode.objects.filter(node = node).order_by('-pk')[0]
+        referral_commission_node = total_amount * node.node_commission_percentage/100 
+        referral_commission_super = total_amount * node.extra_super_node_commission/100
+        referral_commission_master = total_amount * node.extra_master_node_commission/100
 
-        referred_by_user = sender.referred_by.user
-        if referred_by_user.user_type == 'Client':
-            referral_commission = total_amount_node * 10 / 100 
+        # referral_commission = referral_commission_node + referral_commission_master + referral_commission_super
 
-        elif referred_by_user.user_type == 'MasterNode':
-            if master_node.master_node_id == referral.master_node_id:
-                referral_commission = total_amount_node * 5 / 100 
+        referral_commission_super_node = 0
+        referral_commission_master_node = 0
+        referral_commission_subnode_node = 0
 
-            elif master_node.parent_node and master_node.parent_node.master_node_id == referral.master_node_id:
-                referral_commission = total_amount_node * 5 / 100  
+        try:
+            referred_by_user = sender.referred_by
+            referred_super_node = referred_by_user.super_node_ref
+            referred_master_node = referred_by_user.master_node_ref
+            referred_sub_node = referred_by_user.sub_node_ref
+            print("referralsss", referred_by_user, referred_master_node, referred_sub_node, referred_super_node)
+        except AttributeError:
+            referred_by_user = None
+            referred_super_node = None
+            referred_master_node = None
+            referred_sub_node = None
 
-        elif referred_by_user.user_type == 'Admin':
-            referral_commission = total_amount_node * 10 / 100 
+            if not referred_by_user:
+                return Response({'message': 'User dont have referral'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        
 
-        if transaction_type == 'ETH 2.0 Node':
-            if sender.referred_by and sender.referred_by.commission_received == False:
+        # if referred_super_node:
+        #     if referred_master_node and referred_sub_node:
+        #         referral_commission_super_node = referral_commission * Decimal(0.25)
+        #         referral_commission_master_node = referral_commission * Decimal(0.25)
+        #         referral_commission_subnode_node = referral_commission * Decimal(0.5)
+        #     elif referred_sub_node:
+        #         referral_commission_super_node = referral_commission * Decimal(0.25)
+        #         referral_commission_subnode_node = referral_commission * Decimal(0.5)
+        #     else:
+        #         referral_commission_super_node = referral_commission * Decimal(0.25)
+        
+        # elif referred_master_node:
+        #     if referred_sub_node:
                 
-                referral = sender.referred_by
-                referred_by_user = sender.referred_by.user
-                referred_by_maturity = referred_by_user.maturity
-                user_ref_commision = referral.commission_earned
+        #         referral_commission_master_node = referral_commission * Decimal(0.25)
+        #         referral_commission_subnode_node = referral_commission * Decimal(0.5)
 
-                if referred_by_maturity - referred_by_user.claimed_reward >= referral_commission:
-                    referral_commission = Decimal(referral_commission)
-                    referred_by_user.claimed_reward += referral_commission
-                    referred_by_user.save()
-                    referral.increase_commission_earned(referral_commission)
-                    commission_transaction = Transaction.objects.create(
-                        # sender=sender,
-                        sender=referral.user,
-                        amount=referral_commission,
-                        transaction_type='Generated SubNode',
-                        block_id = block_id,
-                        node_id = node_id,
-                        node = node,
-                        server_type = server_type,
-                        trx_hash = trx_hash,
-                        stake_swim_quantity = 0, supernode_quantity = 0, node_quantity=0
+        #     else:
+        #         referral_commission_master_node = referral_commission * Decimal(0.25)
 
-                    )
-                    
-                    referral.commission_transactions = commission_transaction
-                    referral.user.claimed_reward += referral_commission
-                    referral.save()
-                    serializer.save(amount = total_amount_node)
-                    sender.maturity += total_amount*2
-                    if referred_by_user.user_type == 'Client':
-                        sender.referred_by.mark_commission_received()
-                    sender.total_deposit += total_amount
-                    sender.save()
+        # elif referred_sub_node:
+        #     referral_commission_subnode_node = referral_commission * Decimal(0.5)
 
-                elif referred_by_maturity - referred_by_user.claimed_reward < referral_commission and referred_by_maturity- referred_by_user.claimed_reward != 0:
-                    commision_added = referred_by_maturity - referred_by_user.claimed_reward
-                    commision_added = Decimal(commision_added)
-                    referred_by_user.claimed_reward += commision_added
-                    referred_by_user.save()
-                    referral.increase_commission_earned(commision_added)
-                    commission_transaction = Transaction.objects.create(
-                        sender=referral.user,
-                        # sender=sender,
-                        amount=commision_added,
-                        transaction_type='Generated SubNode',
-                        block_id = block_id,
-                        node_id = node_id,
-                        node = node,
-                        server_type = server_type,
-                        trx_hash = trx_hash,
-                        stake_swim_quantity = 0, supernode_quantity = 0, node_quantity=0
+        
+        # else:
+        #     #admin is the referral!!!
+        #     referral_commission = 0
 
-                    )
-                    referral.commission_transactions = commission_transaction
-                    referral.save()
-                    serializer.save(amount = total_amount_node)
-                    sender.maturity += total_amount*2
-                    sender.total_deposit += total_amount
-                    if referred_by_user.user_type == 'Client':
-                        sender.referred_by.mark_commission_received()
-                    sender.save()
+
+
+        if referred_super_node:
+            if referred_master_node and referred_sub_node:
+                referral_commission_super_node = referral_commission_super
+                referral_commission_master_node = referral_commission_master
+                referral_commission_subnode_node = referral_commission_node
+            elif referred_sub_node:
+                referral_commission_super_node = referral_commission_super
+                referral_commission_subnode_node = referral_commission_node
+            else:
+                referral_commission_super_node = referral_commission_super
+        
+        elif referred_master_node:
+            if referred_sub_node:
                 
-                else:
-                    sender.maturity += total_amount*2
-                    sender.total_deposit += total_amount
-                    sender.save()
-                    serializer.save(amount = total_amount_node,     stake_swim_quantity = 0, supernode_quantity = 0 )
+                referral_commission_master_node = referral_commission_master
+                referral_commission_subnode_node = referral_commission_node
 
             else:
-                sender.maturity += total_amount*2
-                sender.total_deposit += total_amount
-                sender.save()
-                serializer.save(amount = total_amount_node, stake_swim_quantity = 0, supernode_quantity = 0)
-            if supernode_quantity:
-                Transaction.objects.create(sender=sender, amount=total_amount_super, transaction_type='SuperNode Boost', block_id = block_id, node_id = node_id,node = node, supernode_quantity = supernode_quantity, server_type = server_type,
-                        trx_hash = trx_hash, node_quantity = 0)
-            if stake_swim_quantity:
-                Transaction.objects.create(sender=sender, amount=total_amount_stake, transaction_type='Stake & Swim Boost', node_id = node_id,block_id = block_id, node = node, stake_swim_quantity = stake_swim_quantity,server_type = server_type,
-                        trx_hash = trx_hash, node_quantity = 0)
+                referral_commission_master_node = referral_commission_master
 
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        elif referred_sub_node:
+            referral_commission_subnode_node = referral_commission_node
+
+        
+        else:
+            #admin is the referral!!!
+            referral_commission = 0
+
+        print("refff", referral_commission_master_node, referral_commission_subnode_node, referral_commission_super_node)
+
+        if referral_commission_super_node:
+            # Transaction.objects.create(sender=referred_super_node, amount=referral_commission_super_node, transaction_type='Generated SubNode', generated_subnode_type = 'GeneratedSuperSubNode', block_id = block_id, trx_hash = trx_hash, node_id = node_id, node = node, server_type = server_type)
+            handle_commission_transfer(referred_super_node, referral_commission_super_node, block_id, node_id, node, server_type, trx_hash)
+
+
+        if referral_commission_master_node:
+            handle_commission_transfer(referred_master_node, referral_commission_master_node, block_id, node_id, node, server_type, trx_hash)
+
+
+            # Transaction.objects.create(sender=referred_master_node, amount=referral_commission_master_node, transaction_type='Generated SubNode', generated_subnode_type = 'GeneratedMasterSubNode', block_id = block_id, trx_hash = trx_hash, node_id = node_id, node = node, server_type = server_type)
+
+        if referral_commission_subnode_node:
+            handle_commission_transfer(referred_sub_node, referral_commission_subnode_node, block_id, node_id, node, server_type, trx_hash)
+
+            # Transaction.objects.create(sender=referred_sub_node, amount=referral_commission_subnode_node, transaction_type='Generated SubNode', generated_subnode_type = 'GeneratedClientSubNode', block_id = block_id, trx_hash = trx_hash, node_id = node_id, node = node, server_type = server_type)
+
+
+        if super_node_eth2_quantity:
+            Transaction.objects.create(sender=sender, amount=super_node_eth2, transaction_type='Generated SuperNode', block_id = block_id, trx_hash = trx_hash, node_id = node_id, node = node, server_type = server_type)
+            sender.is_purchased = True
+            sender.save()
+            
+        elif master_node_eth2_quantity:
+            Transaction.objects.create(sender=sender, amount=master_node_eth2, transaction_type='Generated SuperNode', block_id = block_id, trx_hash = trx_hash, node_id = node_id, node = node, server_type = server_type)
+            sender.is_purchased = True
+            sender.save()
+        else:
+            Transaction.objects.create(sender=sender, amount=total_amount_node, transaction_type='ETH 2.0 Node', block_id = block_id, trx_hash = trx_hash, node_id = node_id, node = node, server_type = server_type)
+
+        if stake_swim_quantity:
+            Transaction.objects.create(sender=sender, amount=total_amount_stake, transaction_type='Stake & Swim Boost', block_id = block_id, trx_hash = trx_hash, node_id = node_id, node = node, server_type = server_type)
+        if supernode_quantity:
+            Transaction.objects.create(sender=sender, amount=total_amount_super, transaction_type='SuperNode Boost', block_id = block_id, trx_hash = trx_hash, node_id = node_id, node = node, server_type = server_type)
+
+        distribute_to_partners(node, setup_charges)
+        print("distributeddd")
+
+        # return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+
+        # if referred_by_user.user_type == 'Client':
+        #     referral_commission = total_amount_node * 10 / 100 
+
+        # elif referred_by_user.user_type == 'MasterNode':
+        #     if master_node.master_node_id == referral.master_node_id:
+        #         referral_commission = total_amount_node * 5 / 100 
+
+        #     elif master_node.parent_node and master_node.parent_node.master_node_id == referral.master_node_id:
+        #         referral_commission = total_amount_node * 5 / 100  
+
+        # elif referred_by_user.user_type == 'Admin':
+        #     referral_commission = total_amount_node * 10 / 100 
+
+        # if transaction_type == 'ETH 2.0 Node':
+        #     f sender.referred_by and sender.referred_by.commission_received == False:i
+                
+        #         referral = sender.referred_by
+        #         referred_by_user = sender.referred_by.user
+        #         referred_by_maturity = referred_by_user.maturity
+        #         user_ref_commision = referral.commission_earned
+
+        #         if referred_by_maturity - referred_by_user.claimed_reward >= referral_commission:
+        #             referral_commission = Decimal(referral_commission)
+        #             referred_by_user.claimed_reward += referral_commission
+        #             referred_by_user.save()
+        #             referral.increase_commission_earned(referral_commission)
+        #             commission_transaction = Transaction.objects.create(
+        #                 # sender=sender,
+        #                 sender=referral.user,
+        #                 amount=referral_commission,
+        #                 transaction_type='Generated SubNode',
+        #                 block_id = block_id,
+        #                 node_id = node_id,
+        #                 node = node,
+        #                 server_type = server_type,
+        #                 trx_hash = trx_hash,
+        #                 stake_swim_quantity = 0, supernode_quantity = 0, node_quantity=0
+
+        #             )
+                    
+        #             referral.commission_transactions = commission_transaction
+        #             referral.user.claimed_reward += referral_commission
+        #             referral.save()
+        #             serializer.save(amount = total_amount_node)
+        #             sender.maturity += total_amount*2
+        #             if referred_by_user.user_type == 'Client':
+        #                 sender.referred_by.mark_commission_received()
+        #             sender.total_deposit += total_amount
+        #             sender.save()
+
+        #         elif referred_by_maturity - referred_by_user.claimed_reward < referral_commission and referred_by_maturity- referred_by_user.claimed_reward != 0:
+        #             commision_added = referred_by_maturity - referred_by_user.claimed_reward
+        #             commision_added = Decimal(commision_added)
+        #             referred_by_user.claimed_reward += commision_added
+        #             referred_by_user.save()
+        #             referral.increase_commission_earned(commision_added)
+        #             commission_transaction = Transaction.objects.create(
+        #                 sender=referral.user,
+        #                 # sender=sender,
+        #                 amount=commision_added,
+        #                 transaction_type='Generated SubNode',
+        #                 block_id = block_id,
+        #                 node_id = node_id,
+        #                 node = node,
+        #                 server_type = server_type,
+        #                 trx_hash = trx_hash,
+        #                 stake_swim_quantity = 0, supernode_quantity = 0, node_quantity=0
+
+        #             )
+        #             referral.commission_transactions = commission_transaction
+        #             referral.save()
+        #             serializer.save(amount = total_amount_node)
+        #             sender.maturity += total_amount*2
+        #             sender.total_deposit += total_amount
+        #             if referred_by_user.user_type == 'Client':
+        #                 sender.referred_by.mark_commission_received()
+        #             sender.save()
+                
+        #         else:
+        #             sender.maturity += total_amount*2
+        #             sender.total_deposit += total_amount
+        #             sender.save()
+        #             serializer.save(amount = total_amount_node,     stake_swim_quantity = 0, supernode_quantity = 0 )
+
+        #     else:
+        #         sender.maturity += total_amount*2
+        #         sender.total_deposit += total_amount
+        #         sender.save()
+        #         serializer.save(amount = total_amount_node, stake_swim_quantity = 0, supernode_quantity = 0)
+            # if supernode_quantity:
+            #     Transaction.objects.create(sender=sender, amount=total_amount_super, transaction_type='SuperNode Boost', block_id = block_id, node_id = node_id,node = node, supernode_quantity = supernode_quantity, server_type = server_type,
+            #             trx_hash = trx_hash, node_quantity = 0)
+            # if stake_swim_quantity:
+            #     Transaction.objects.create(sender=sender, amount=total_amount_stake, transaction_type='Stake & Swim Boost', node_id = node_id,block_id = block_id, node = node, stake_swim_quantity = stake_swim_quantity,server_type = server_type,
+            #             trx_hash = trx_hash, node_quantity = 0)
+        sender.is_purchased = True
+        sender.save()
+        return Response({'message':'Transaction successfully created'}, status=status.HTTP_201_CREATED)
 
 
 class ServerInformationViewset(viewsets.GenericViewSet, ListModelMixin):
@@ -473,6 +629,19 @@ class AuthorizedNodeViewset(viewsets.ModelViewSet):
             return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
         
         user.referred_by = referral
+        if referral.user.user_type == 'SuperNode':
+            referral.super_node_ref = referral.user
+            referral.save()
+        if referral.user.user_type == 'MasterNode':
+            referral.super_node_ref = referral.user.referred_by.user
+            referral.master_node_ref = referral.user
+            referral.save()
+        if referral.user.user_type == 'Client':
+            referral.super_node_ref = referral.user.referred_by.super_node_ref
+            referral.master_node_ref = referral.user.referred_by.master_node_ref
+            referral.sub_node_ref = referral.user
+            referral.save()
+                    
         user.save()
         referral.increase_referred_users()
 

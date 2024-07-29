@@ -1,5 +1,5 @@
 from rest_framework.routers import DefaultRouter
-from .views import NodeSetupViewset, AdminUserViewset, NodePartnerViewset, NodeMasterViewset, NodeManagerViewset, AdminNodeOverview, AdminClaimViewset, AddNodeToAdminViewset, SuperNodeViewset
+from .views import NodeSetupViewset, AdminUserViewset, NodePartnerViewset, NodeMasterViewset, NodeManagerViewset, AdminNodeOverview, AdminClaimViewset, AddNodeToAdminViewset, SuperNodeViewset, GetRevenueSearchViewset
 router = DefaultRouter()
 
 router.register(r'user-signup', AdminUserViewset, basename='admin-signup')
@@ -12,6 +12,7 @@ router.register(r'node-overview', AdminNodeOverview, basename='node-overview')
 router.register(r'admin-claim', AdminClaimViewset, basename='admin-claim')
 router.register(r'add-node', AddNodeToAdminViewset, basename='add-node-to-admin')
 router.register(r'add-super-node', SuperNodeViewset, basename='add-super-node')
+router.register(r'get-revenue', GetRevenueSearchViewset, basename='get-revenue')
 
 
 urlpatterns = router.urls
