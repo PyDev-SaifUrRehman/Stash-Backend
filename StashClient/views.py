@@ -113,44 +113,20 @@ class GetRefAdressViewset(viewsets.GenericViewSet, ListModelMixin):
         except:
             return Response({"error": "Invalid node setup"}, status=status.HTTP_400_BAD_REQUEST)
         
-        master_node_ref = MasterNode.objects.get(parent_node__isnull=False)
-        master_node_ref_child_node = master_node_ref.master_node_id
-        master_node_ref_parent_node = master_node_ref.parent_node.master_node_id if master_node_ref.parent_node else None
-        main_ref_address = user_with_referral_code.wallet_address
-        first_referral_address = user_with_referral_code.referred_by.user.wallet_address
+        referral = user_with_referral_code.referred_by
+        super_node_ref = referral.super_node_ref.wallet_address
+        master_node_ref = referral.master_node_ref.wallet_address
+        sub_node_ref = referral.sub_node_ref.wallet_address
+        admin_node_ref = admin_node
 
-        while True:
-            referral_code = user_with_referral_code.referred_by.user.referral_code
-
-            if referral_code == master_node_ref_child_node:
-                matched_key = "child"
-                matched_value = master_node_ref_child_node
-                node_address = ClientUser.objects.get(referral_code = master_node_ref_child_node).wallet_address
-                break
-            elif referral_code == master_node_ref_parent_node:
-                matched_key = "parent"
-                matched_value = master_node_ref_parent_node
-                node_address = ClientUser.objects.get(referral_code = master_node_ref_parent_node).wallet_address
-                break
-            elif referral_code == admin_node:
-                matched_key = "admin"
-                matched_value = admin_node
-                node_address = ClientUser.objects.get(referral_code = admin_node).wallet_address
-                break
-
-            try:
-                user_with_referral_code = user_with_referral_code.referred_by.user
-            except AttributeError:
-                return Response({"error": "Master node not found in referral chain"}, status=status.HTTP_404_NOT_FOUND)
-    
         response_data = {
-            "ref-address":main_ref_address,
-            "first_referral": first_referral_address,
-            "node_address":node_address,
-            "node_id": admin_node,
-            matched_key:matched_value
-            }
-        
+            'super_node_ref': super_node_ref,
+            'master_node_ref': master_node_ref,
+            'sub_node_ref': sub_node_ref,
+            'admin_node_ref': admin_node_ref,
+
+        }
+
         return Response(response_data, status=status.HTTP_200_OK)
 
 
