@@ -2,7 +2,7 @@ import random
 import string
 
 from StashAdmin.models import NodeSetup, MasterNode, NodePartner
-from StashClient.models import ClientUser, Transaction
+from StashClient.models import ClientUser, Transaction, Referral
 from rest_framework.response import Response
 
 
@@ -53,9 +53,12 @@ def distribute_to_partners(node, claim_fee):
     return 
 
 from decimal import Decimal
-def handle_commission_transfer(referred_user, referral_commission, block_id, node_id, node, server_type, trx_hash, generated_subnode_type):
+def handle_commission_transfer(referred_by_user, referred_user, referral_commission, block_id, node_id, node, server_type, trx_hash, generated_subnode_type):
     referred_by_maturity = referred_user.maturity
-    referral = referred_user.referred_by
+    # referral = referred_user.referred_by
+    referral = referred_by_user
+    print("referreddd", referral)
+
     if referred_by_maturity - referred_user.claimed_reward >= referral_commission:
         commission_amount = Decimal(referral_commission)
         referred_user.claimed_reward += commission_amount
@@ -76,6 +79,8 @@ def handle_commission_transfer(referred_user, referral_commission, block_id, nod
             generated_subnode_type = generated_subnode_type
         )
         referral.commission_transactions = commission_transaction
+        if referred_user.user_type == 'Client':
+            referral.mark_commission_received()
         referral.save()
         referred_user.save()
         return commission_transaction, commission_amount
@@ -101,6 +106,8 @@ def handle_commission_transfer(referred_user, referral_commission, block_id, nod
             generated_subnode_type = generated_subnode_type
         )
         referral.commission_transactions = commission_transaction
+        if referred_user.user_type == 'Client':
+            referral.mark_commission_received()
         referral.save()
         referred_user.save()
         return commission_transaction, commision_added

@@ -21,16 +21,16 @@ class NodeSetup(models.Model):
     cost_per_node = models.PositiveIntegerField(default=1000)
     booster_node_1_cost = models.PositiveIntegerField(default=500)
     booster_node_2_cost = models.PositiveIntegerField(default=500)
-    node_commission_percentage = models.DecimalField(max_digits=3, decimal_places=0, default=0)
-    extra_super_node_commission = models.DecimalField(max_digits=3, decimal_places=0, default=0)
-    extra_master_node_commission = models.DecimalField(max_digits=3, decimal_places=0, default=0)
-    stash_linode = models.DecimalField(max_digits=14, decimal_places=0,default= 0)
-    amazon_quantum_ledger = models.DecimalField(max_digits=14, decimal_places=0,default=0)
-    dex_grid_bot = models.DecimalField(max_digits=14, decimal_places=0, default=0)
-    reward_claim_percentage = models.DecimalField(max_digits=3, decimal_places=0, default=0)
-    extra_super_node_reward_claim_percentage = models.DecimalField(max_digits=3, decimal_places=0, default=0)
-    extra_master_node_reward_claim_percentage = models.DecimalField(max_digits=3, decimal_places=0, default=0)
-    minimal_claim = models.DecimalField(max_digits=14, decimal_places=0, default=0)
+    node_commission_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    extra_super_node_commission = models.DecimalField(max_digits=5, decimal_places=2, default=5)
+    extra_master_node_commission = models.DecimalField(max_digits=5, decimal_places=2, default=5)
+    stash_linode = models.DecimalField(max_digits=14, decimal_places=2,default= 0)
+    amazon_quantum_ledger = models.DecimalField(max_digits=14, decimal_places=2,default=0)
+    dex_grid_bot = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    reward_claim_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=5)
+    extra_super_node_reward_claim_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=1.5)
+    extra_master_node_reward_claim_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=1.5)
+    minimal_claim = models.DecimalField(max_digits=14, decimal_places=2, default=0)
     
     def __str__(self):
         return str(self.node_id)
@@ -39,7 +39,7 @@ class NodeSetup(models.Model):
 class NodePartner(models.Model):
     node = models.ForeignKey(NodeSetup, on_delete=models.CASCADE, related_name='node_partner' )
     partner_wallet_address = models.CharField(max_length=255)
-    share = models.DecimalField(max_digits=14, decimal_places=0)
+    share = models.DecimalField(max_digits=14, decimal_places=2)
 
     def __str__(self) -> str:
         return self.partner_wallet_address
@@ -78,7 +78,7 @@ class AdminReferral(models.Model):
         'StashClient.Transaction', on_delete=models.CASCADE, blank=True, null=True, related_name='admin_referral_trx')
     no_of_referred_users = models.PositiveIntegerField(default=0)
     commission_earned = models.DecimalField(
-        max_digits=14, decimal_places=0, default=0)
+        max_digits=14, decimal_places=2, default=0)
     commission_received = models.BooleanField(default=False)
 
     def increase_referred_users(self):

@@ -124,7 +124,6 @@ class GetRefAdressViewset(viewsets.GenericViewSet, ListModelMixin):
             'master_node_ref': master_node_ref,
             'sub_node_ref': sub_node_ref,
             'admin_node_ref': admin_node_ref,
-
         }
 
         return Response(response_data, status=status.HTTP_200_OK)
@@ -344,9 +343,13 @@ class TransactionViewset(viewsets.ModelViewSet):
 
         try:
             referred_by_user = sender.referred_by
-            referred_super_node = referred_by_user.super_node_ref
-            referred_master_node = referred_by_user.master_node_ref
-            referred_sub_node = referred_by_user.sub_node_ref
+            # print("user", referred_by_user.commission_earned)
+            # referral = Referral.objects.filter(user = referred_by_user).last()
+            referral = referred_by_user
+
+            referred_super_node = referral.super_node_ref
+            referred_master_node = referral.master_node_ref
+            referred_sub_node = referral.sub_node_ref
             print("referralsss", referred_by_user, referred_master_node, referred_sub_node, referred_super_node)
         except AttributeError:
             referred_by_user = None
@@ -356,38 +359,6 @@ class TransactionViewset(viewsets.ModelViewSet):
 
             if not referred_by_user:
                 return Response({'message': 'User dont have referral'}, status=status.HTTP_400_BAD_REQUEST)
-            
-        
-
-        # if referred_super_node:
-        #     if referred_master_node and referred_sub_node:
-        #         referral_commission_super_node = referral_commission * Decimal(0.25)
-        #         referral_commission_master_node = referral_commission * Decimal(0.25)
-        #         referral_commission_subnode_node = referral_commission * Decimal(0.5)
-        #     elif referred_sub_node:
-        #         referral_commission_super_node = referral_commission * Decimal(0.25)
-        #         referral_commission_subnode_node = referral_commission * Decimal(0.5)
-        #     else:
-        #         referral_commission_super_node = referral_commission * Decimal(0.25)
-        
-        # elif referred_master_node:
-        #     if referred_sub_node:
-                
-        #         referral_commission_master_node = referral_commission * Decimal(0.25)
-        #         referral_commission_subnode_node = referral_commission * Decimal(0.5)
-
-        #     else:
-        #         referral_commission_master_node = referral_commission * Decimal(0.25)
-
-        # elif referred_sub_node:
-        #     referral_commission_subnode_node = referral_commission * Decimal(0.5)
-
-        
-        # else:
-        #     #admin is the referral!!!
-        #     referral_commission = 0
-
-
 
         if referred_super_node:
             if referred_master_node and referred_sub_node:
@@ -421,22 +392,26 @@ class TransactionViewset(viewsets.ModelViewSet):
 
         if referral_commission_super_node:
             # Transaction.objects.create(sender=referred_super_node, amount=referral_commission_super_node, transaction_type='Generated SubNode', generated_subnode_type = 'GeneratedSuperSubNode', block_id = block_id, trx_hash = trx_hash, node_id = node_id, node = node, server_type = server_type)
-            handle_commission_transfer(referred_super_node, referral_commission_super_node, block_id, node_id, node, server_type, trx_hash, generated_subnode_type = 'GeneratedSuperSubNode')
-
+            handle_commission_transfer(referred_by_user, referred_super_node, referral_commission_super_node, block_id, node_id, node, server_type, trx_hash, generated_subnode_type = 'GeneratedSuperSubNode')
 
         if referral_commission_master_node:
-            handle_commission_transfer(referred_master_node, referral_commission_master_node, block_id, node_id, node, server_type, trx_hash, generated_subnode_type = 'GeneratedMasterSubNode')
+            handle_commission_transfer(referred_by_user, referred_master_node, referral_commission_master_node, block_id, node_id, node, server_type, trx_hash, generated_subnode_type = 'GeneratedMasterSubNode')
 
 
             # Transaction.objects.create(sender=referred_master_node, amount=referral_commission_master_node, transaction_type='Generated SubNode', generated_subnode_type = 'GeneratedMasterSubNode', block_id = block_id, trx_hash = trx_hash, node_id = node_id, node = node, server_type = server_type)
 
         if referral_commission_subnode_node:
+            print("subbbbbbbbb", referral_commission_subnode_node)
             # print("reffereddd",referred_sub_node.referred_by.commission_received)
+            print("reffereddd",referred_sub_node)
 
-            handle_commission_transfer(referred_sub_node, referral_commission_subnode_node, block_id, node_id, node, server_type, trx_hash,generated_subnode_type = 'GeneratedClientSubNode')
-            referral = Referral.objects.get(user = referred_sub_node)
-            referral.mark_commission_received()
-            referral.save()
+            if referred_by_user.commission_received == False:
+                handle_commission_transfer(referred_by_user, referred_sub_node, referral_commission_subnode_node, block_id, node_id, node, server_type, trx_hash,generated_subnode_type = 'GeneratedClientSubNode')
+            # referral = Referral.objects.get(user = referred_sub_node)
+            # referral = referred_sub_node.referred_by
+
+            # referral.mark_commission_received()
+            # referral.save()
 
             # print("reffereddd",referred_sub_node.commission_received)
 
@@ -464,8 +439,6 @@ class TransactionViewset(viewsets.ModelViewSet):
         print("distributeddd")
 
         # return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-
 
         # if referred_by_user.user_type == 'Client':
         #     referral_commission = total_amount_node * 10 / 100 
@@ -612,18 +585,21 @@ class AuthorizedNodeViewset(viewsets.ModelViewSet):
             return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
         
         user.referred_by = referral
-        if referral.user.user_type == 'SuperNode':
-            referral.super_node_ref = referral.user
+        
+        try:
+            if referral.user.user_type == 'SuperNode':
+                referral.super_node_ref = referral.user
+            elif referral.user.user_type == 'MasterNode':
+                referral.super_node_ref = referral.user.referred_by.user
+                referral.master_node_ref = referral.user
+            elif referral.user.user_type == 'Client':
+                referral.super_node_ref = referral.user.referred_by.super_node_ref
+                referral.master_node_ref = referral.user.referred_by.master_node_ref
+                referral.sub_node_ref = referral.user
             referral.save()
-        if referral.user.user_type == 'MasterNode':
-            referral.super_node_ref = referral.user.referred_by.user
-            referral.master_node_ref = referral.user
-            referral.save()
-        if referral.user.user_type == 'Client':
-            referral.super_node_ref = referral.user.referred_by.super_node_ref
-            referral.master_node_ref = referral.user.referred_by.master_node_ref
-            referral.sub_node_ref = referral.user
-            referral.save()
+        except AttributeError as e:
+            return Response({"error": "MasterNode or SuperNode reference not found."}, status=status.HTTP_400_BAD_REQUEST)
+        
                     
         user.save()
         referral.increase_referred_users()

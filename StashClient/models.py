@@ -43,7 +43,7 @@ class ClientUser(BaseUser):
 
     def __str__(self):
         return str(self.wallet_address) + " referralcode " + str(self.referral_code) + " by "+ str(self.referred_by)
-
+        # return str(self.wallet_address) 
 
 class Referral(models.Model):
     user = models.ForeignKey(
@@ -58,7 +58,6 @@ class Referral(models.Model):
     master_node_ref = models.ForeignKey(ClientUser, on_delete= models.CASCADE, related_name="master_node_ref", null= True, blank= True)
     sub_node_ref = models.ForeignKey(ClientUser, on_delete= models.CASCADE, related_name="subnode_ref", null= True, blank= True)
 
-    # master_node = models.CharField(max_length=50, null=True, blank=True)
 
     def increase_referred_users(self):
         self.no_of_referred_users += 1
