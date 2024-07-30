@@ -67,6 +67,10 @@ class ClientUserViewSet(viewsets.ModelViewSet):
             referrals = Referral.objects.filter(user=instance)
             total_referred_users = referrals.aggregate(total_users=models.Sum('no_of_referred_users'))['total_users'] or 0
             total_commission_earned = referrals.aggregate(total_commission=models.Sum('commission_earned'))['total_commission'] or 0
+            if instance.referred_by:
+                referred_by_code =  instance.referred_by.user.referral_code
+            else:
+                referred_by_code =  None
 
 
         except: 
@@ -78,6 +82,7 @@ class ClientUserViewSet(viewsets.ModelViewSet):
         serializer_data['total_nodes'] = nodes
         serializer_data['total_generated_subnodes'] = generated_subnodes
         serializer_data['generated_subnode_reward'] = total_commission_earned
+        serializer_data['referred_by_code'] = referred_by_code
 
         return Response(serializer_data, status=status.HTTP_200_OK)        
 
