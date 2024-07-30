@@ -109,7 +109,7 @@ class GetRefAdressViewset(viewsets.GenericViewSet, ListModelMixin):
             return Response({"error": "Invalid referral code"}, status=status.HTTP_400_BAD_REQUEST)
         
         try:
-            admin_node = NodeSetup.objects.first().node_id
+            admin_node = NodeSetup.objects.first().user.wallet_address
         except:
             return Response({"error": "Invalid node setup"}, status=status.HTTP_400_BAD_REQUEST)
         
@@ -401,21 +401,8 @@ class TransactionViewset(viewsets.ModelViewSet):
             # Transaction.objects.create(sender=referred_master_node, amount=referral_commission_master_node, transaction_type='Generated SubNode', generated_subnode_type = 'GeneratedMasterSubNode', block_id = block_id, trx_hash = trx_hash, node_id = node_id, node = node, server_type = server_type)
 
         if referral_commission_subnode_node:
-            print("subbbbbbbbb", referral_commission_subnode_node)
-            # print("reffereddd",referred_sub_node.referred_by.commission_received)
-            print("reffereddd",referred_sub_node)
-
             if referred_by_user.commission_received == False:
                 handle_commission_transfer(referred_by_user, referred_sub_node, referral_commission_subnode_node, block_id, node_id, node, server_type, trx_hash,generated_subnode_type = 'GeneratedClientSubNode')
-            # referral = Referral.objects.get(user = referred_sub_node)
-            # referral = referred_sub_node.referred_by
-
-            # referral.mark_commission_received()
-            # referral.save()
-
-            # print("reffereddd",referred_sub_node.commission_received)
-
-            # Transaction.objects.create(sender=referred_sub_node, amount=referral_commission_subnode_node, transaction_type='Generated SubNode', generated_subnode_type = 'GeneratedClientSubNode', block_id = block_id, trx_hash = trx_hash, node_id = node_id, node = node, server_type = server_type)
 
 
         if super_node_eth2_quantity:
