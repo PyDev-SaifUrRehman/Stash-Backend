@@ -422,7 +422,7 @@ class TransactionViewset(viewsets.ModelViewSet):
         if supernode_quantity:
             Transaction.objects.create(sender=sender, amount=total_amount_super, transaction_type='SuperNode Boost', block_id = block_id, trx_hash = trx_hash, node_id = node_id, node = node, server_type = server_type)
 
-        distribute_to_partners(node, setup_charges)
+        distribute_to_partners(node, setup_charges, block_id, trx_hash)
         print("distributeddd")
 
         # return Response(serializer.data, status=status.HTTP_201_CREATED)

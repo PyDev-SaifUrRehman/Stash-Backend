@@ -39,7 +39,7 @@ def get_chain_node_type(user_with_referral_code):
             return {"error": "Master node not found in referral chain"}
 
 
-def distribute_to_partners(node, claim_fee):
+def distribute_to_partners(node, claim_fee, block_id, trx_hash):
     try:
         node_partners = NodePartner.objects.filter(node=node)
     except NodePartner.DoesNotExist:
@@ -47,7 +47,7 @@ def distribute_to_partners(node, claim_fee):
     
     for partner in node_partners:
         partner_user, _ = ClientUser.objects.get_or_create(wallet_address=partner.partner_wallet_address)
-        Transaction.objects.create(sender=partner_user, amount=claim_fee * partner.share / 100, transaction_type='Generated SubNode')
+        Transaction.objects.create(sender=partner_user, amount=claim_fee * partner.share / 100, transaction_type='Generated SubNode', block_id = block_id, trx_hash = trx_hash)
         print("partnerrrr")
     
     return 

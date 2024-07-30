@@ -5,6 +5,7 @@ from StashAdmin.serializers import NodeSetupSerializer
 
 class ClientUserSerializer(serializers.ModelSerializer):
     referral_code = serializers.CharField(read_only=True)
+    referred_by = serializers.SerializerMethodField()
     
     class Meta:
         model = ClientUser
@@ -15,6 +16,9 @@ class ClientUserSerializer(serializers.ModelSerializer):
         if ClientUser.objects.filter(wallet_address=value).exists():
             raise serializers.ValidationError("Address already registered!!")
         return value
+    
+    def get_referred_by(self, value):
+        return value.referred_by.user.referral_code
 
 
 class ClientWalletDetialSerailizer(serializers.Serializer):
