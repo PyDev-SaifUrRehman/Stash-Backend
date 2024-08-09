@@ -137,13 +137,14 @@ class AdminNodeOverview(viewsets.ModelViewSet):
 
     def list(self, request, *args, **kwargs):
 
-        total_eth2_nodes_count = Transaction.objects.filter(transaction_type = 'ETH 2.0 Node').count() or 0
-        stake_swim_boostcount = Transaction.objects.filter(transaction_type = 'Stake & Swim Boost').count() or 0
-        total_super_nodes_count = Transaction.objects.filter(transaction_type = 'SuperNode Boost').count() or 0
-        total_setup_fee = Transaction.objects.filter(transaction_type = 'ETH 2.0 Node').aggregate(setup_charges = Sum('setup_charges'))['setup_charges'] or 0
-        total_super_nodes_count = 0
+        total_eth2_nodes_count = Transaction.objects.filter(transaction_type = 'ETH 2.0 Node').aggregate(total_eth2_nodes_count = Sum('node_quantity'))['total_eth2_nodes_count'] or 0
+        stake_swim_boostcount = Transaction.objects.filter(transaction_type = 'Stake & Swim Boost').aggregate(stake_swim_quantity = Sum('stake_swim_quantity'))['stake_swim_quantity'] or 0
+        total_super_nodes_count = Transaction.objects.filter(transaction_type = 'Generated SuperNode').aggregate(super_node_eth2 = Sum('super_node_eth2'))['super_node_eth2'] or 0
+        total_setup_fee = Transaction.objects.all().aggregate(setup_charges = Sum('setup_charges'))['setup_charges'] or 0
         # active_nodes_balance = 0  #node amount that are not exausted, mean maturity - withdrawal == 0 users
-        active_nodes_balance = ClientUser.objects.exclude(maturity=F('claimed_reward')).aggregate(amount=Sum('total_deposit'))['amount'] or 0
+        # active_nodes_balance = ClientUser.objects.exclude(maturity=F('claimed_reward')).aggregate(amount=Sum('total_deposit'))['amount'] or 0
+        active_nodes_balance = Transaction.objects.exclude(sender__maturity=F('sender__claimed_reward')).aggregate(amount=Sum('amount'))['amount'] or 0
+        
         
         # active_nodes_balance = ClientUser.objects.filter(F('maturity') - F('claimed_reward') == Value(0))
         print("act", active_nodes_balance)

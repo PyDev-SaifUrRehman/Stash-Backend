@@ -76,11 +76,14 @@ class ClientUserViewSet(viewsets.ModelViewSet):
         except: 
             referrals = 0
         serializer_data = serializer.data
-        nodes = Transaction.objects.filter(sender = instance, transaction_type = 'ETH 2.0 Node').count()
-        generated_subnodes = Transaction.objects.filter(sender = instance, transaction_type = 'Generated SubNode' ).count()
+        nodes = Transaction.objects.filter(sender = instance, transaction_type = 'ETH 2.0 Node').aggregate(nodes = Sum('node_quantity'))['nodes'] or 0
+        generated_subnodes = Transaction.objects.filter(sender = instance, transaction_type = 'Generated SubNode' )
+        generated_subnodes_count = generated_subnodes.count()
+        total_commission_earned = generated_subnodes.aggregate(revenue = Sum('amount'))['revenue'] or 0
+
         serializer_data['referral'] = total_referred_users
         serializer_data['total_nodes'] = nodes
-        serializer_data['total_generated_subnodes'] = generated_subnodes
+        serializer_data['total_generated_subnodes'] = generated_subnodes_count
         serializer_data['generated_subnode_reward'] = total_commission_earned
         serializer_data['referred_by_code'] = referred_by_code
 
@@ -423,9 +426,9 @@ class TransactionViewset(viewsets.ModelViewSet):
             Transaction.objects.create(sender=sender, amount=total_amount_node, node_quantity = node_quantity, transaction_type='ETH 2.0 Node', block_id = block_id, trx_hash = trx_hash, node_id = node_id, node = node, server_type = server_type)
 
         if stake_swim_quantity:
-            Transaction.objects.create(sender=sender, amount=total_amount_stake, transaction_type='Stake & Swim Boost', block_id = block_id, trx_hash = trx_hash, node_id = node_id, node = node, server_type = server_type)
+            Transaction.objects.create(sender=sender, amount=total_amount_stake, transaction_type='Stake & Swim Boost', block_id = block_id, trx_hash = trx_hash, node_id = node_id, node = node, server_type = server_type, stake_swim_quantity = stake_swim_quantity)
         if supernode_quantity:
-            Transaction.objects.create(sender=sender, amount=total_amount_super, transaction_type='SuperNode Boost', block_id = block_id, trx_hash = trx_hash, node_id = node_id, node = node, server_type = server_type)
+            Transaction.objects.create(sender=sender, amount=total_amount_super, transaction_type='SuperNode Boost', block_id = block_id, trx_hash = trx_hash, node_id = node_id, node = node, server_type = server_type, supernode_quantity = supernode_quantity)
 
         distribute_to_partners(node, setup_charges, block_id, trx_hash)
         print("distributeddd")
