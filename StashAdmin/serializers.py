@@ -2,7 +2,7 @@ from django.db.models import Sum
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
-from .models import NodeSetup, MasterNode, NodeManager, NodePartner, AdminUser, AdminReferral, NodePayout, NodeSuperNode
+from .models import NodeSetup, MasterNode, NodeManager, NodePartner, AdminReferral, NodePayout, NodeSuperNode
 from StashClient.models import ClientUser, Referral
 from StashClient.utils import generate_referral_code
 

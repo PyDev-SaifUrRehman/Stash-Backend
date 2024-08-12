@@ -14,7 +14,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from .models import ClientUser, Referral, Transaction
 from .serializers import ClientUserSerializer, ReferralSerializer, TransactionSerializer, ClientWalletDetialSerailizer, ClaimSerializer, NodePassAuthorizedSerializer
 from .utils import generate_referral_code, get_chain_node_type, distribute_to_partners, handle_commission_transfer
-from StashAdmin.models import BaseUser, AdminUser, NodePartner, NodeSetup, MasterNode
+from StashAdmin.models import BaseUser, NodePartner, NodeSetup, MasterNode
 from StashAdmin.serializers import NodeSetupSerializer
 import requests
 from StashBackend.settings import api_key
@@ -315,7 +315,11 @@ class TransactionViewset(viewsets.ModelViewSet):
         transaction_type = serializer.validated_data['transaction_type']
         node_quantity = serializer.validated_data.get('node_quantity', 0)
         block_id = serializer.validated_data.get('block_id')
-        setup_charges = serializer.validated_data.get('setup_charges', 100)
+        # setup_charges = serializer.validated_data.get('setup_charges', 100)
+        setup_charges = serializer.validated_data.pop('setup_charges')
+        if not setup_charges:
+            setup_charges = 100
+
         server_type = serializer.validated_data.get('server_type')
         trx_hash = serializer.validated_data.get('trx_hash')
         stake_swim_quantity = serializer.validated_data.get('stake_swim_quantity', 0)
@@ -404,7 +408,6 @@ class TransactionViewset(viewsets.ModelViewSet):
 
         if referral_commission_master_node:
             handle_commission_transfer(referred_by_user, referred_master_node, referral_commission_master_node, block_id, node_id, node, server_type, trx_hash, generated_subnode_type = 'GeneratedMasterSubNode')
-
 
             # Transaction.objects.create(sender=referred_master_node, amount=referral_commission_master_node, transaction_type='Generated SubNode', generated_subnode_type = 'GeneratedMasterSubNode', block_id = block_id, trx_hash = trx_hash, node_id = node_id, node = node, server_type = server_type)
 

@@ -1,18 +1,6 @@
 from django.db import models
 from StashClient.models import BaseUser, ClientUser
 
-class AdminUser(BaseUser):
-    referred_by = models.ForeignKey(
-        'AdminReferral', on_delete=models.SET_NULL, null=True, blank=True, related_name='referred_user')
-    referral_code = models.CharField(max_length=100, unique=True, null = True, blank=True)
-    # def save(self, *args, **kwargs):
-    #     self.user_type = 'Admin'
-    #     super().save(*args, **kwargs)
-
-    def __str__(self):
-        return self.wallet_address
-
-
 class NodeSetup(models.Model):
     node_id = models.CharField(max_length=255)
     user = models.ForeignKey(ClientUser, on_delete=models.CASCADE, related_name='node_setup')

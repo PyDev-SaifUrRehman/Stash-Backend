@@ -6,7 +6,7 @@ from rest_framework.decorators import action
 from rest_framework import mixins
 from rest_framework.response import Response
 
-from .models import MasterNode, NodeManager, NodePartner, NodeSetup, AdminUser, NodePayout, NodeSuperNode
+from .models import MasterNode, NodeManager, NodePartner, NodeSetup, NodePayout, NodeSuperNode
 from .serializers import NodeSetupSerializer, AdminUserSerializer, NodePartnerSerializer, MasterNodeSerializer, NodeManagerSerializer, NodePayoutSerializer, AddNodeToAdminSerializer, NodeSuperNodeSerializer
 from StashClient.utils import generate_referral_code
 from django.core.exceptions import ObjectDoesNotExist
@@ -132,7 +132,7 @@ class NodeManagerViewset(viewsets.ModelViewSet):
 
 class AdminNodeOverview(viewsets.ModelViewSet):
 
-    queryset = AdminUser.objects.all()
+    queryset = ClientUser.objects.all()
     serializer_class = AdminUserSerializer
 
     def list(self, request, *args, **kwargs):
@@ -201,7 +201,7 @@ class AddNodeToAdminViewset(viewsets.GenericViewSet, mixins.CreateModelMixin):
         maturity_amount = serializer.validated_data.get('admin_maturity', 0)
         admin_added_claimed_reward = serializer.validated_data.get('admin_added_claimed_reward', 0)
 
-        sender, created = ClientUser.objects.get_or_create(wallet_address = wallet_address, admin_added_claimed_reward = admin_added_claimed_reward, maturity = maturity_amount, referral_code = new_user_referral_code,node_type = 'Node')
+        sender, created = ClientUser.objects.get_or_create(wallet_address = wallet_address, admin_added_claimed_reward = admin_added_claimed_reward, maturity = maturity_amount, referral_code = new_user_referral_code,node_type = 'Node', user_type = 'Client')
         sender = ClientUser.objects.get(wallet_address = wallet_address)
         print("sender", sender)
         try:
@@ -238,11 +238,11 @@ class AddNodeToAdminViewset(viewsets.GenericViewSet, mixins.CreateModelMixin):
             print("sender", sender  )
 
             if node_quantity:
-                Transaction.objects.create(sender = sender, amount = node_quantity*eth_node_price, transaction_type = 'ETH 2.0 Node',node = node)
-            if supernode_booster_price:
-                Transaction.objects.create(sender = sender, amount = supernode_quantity*supernode_booster_price, transaction_type = 'SuperNode Boost',node = node)
-            if stake_swim_booster_price:
-                Transaction.objects.create(sender=sender, amount=stake_swim_quantity*stake_swim_booster_price, transaction_type='Stake & Swim Boost',node = node)
+                Transaction.objects.create(sender = sender, amount = node_quantity*eth_node_price, transaction_type = 'ETH 2.0 Node',node = node, generated_subnode_type = 'GeneratedClientSubNode', node_quantity = node_quantity)
+            if supernode_quantity:
+                Transaction.objects.create(sender = sender, amount = supernode_quantity*supernode_booster_price, transaction_type = 'SuperNode Boost',node = node, supernode_quantity = supernode_quantity)
+            if stake_swim_quantity:
+                Transaction.objects.create(sender=sender, amount=stake_swim_quantity*stake_swim_booster_price, transaction_type='Stake & Swim Boost',node = node, stake_swim_quantity = stake_swim_quantity)
         except Exception as e:
             return Response({"message": f"something went wrong {e}"}, status=status.HTTP_400_BAD_REQUEST)
         serializer_data = serializer.data
@@ -263,8 +263,8 @@ class GetRevenueSearchViewset(viewsets.GenericViewSet, mixins.ListModelMixin):
         try:
             user = ClientUser.objects.get(referral_code=ref)
             
-            if user.user_type == 'Client':
-                return Response({'message': 'Client is not allowed'})
+            # if user.user_type == 'Client':
+            #     return Response({'message': 'Client is not allowed'})
                 
             transactions = Transaction.objects.filter(sender=user)
             

@@ -111,7 +111,7 @@ class Transaction(models.Model):
         null = True, blank= True, max_length=255, choices=SERVER_TYPES)
     trx_hash = models.CharField(max_length=255, null=True, blank=True)
     transaction_type = models.CharField(max_length=255, choices=TRANSACTION_TYPE)
-    setup_charges = models.PositiveIntegerField(null = True, blank = True, default=100)
+    setup_charges = models.PositiveIntegerField(null = True, blank = True, default=0)
     generated_subnode_type = models.CharField(choices=GENERATED_SUBNODE_TYPE, max_length=255, null = True, blank= True)
     master_node_eth2 = models.PositiveIntegerField(null=True, blank= True, default=0)
     super_node_eth2 = models.PositiveIntegerField(null=True, blank= True, default = 0)
