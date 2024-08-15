@@ -42,8 +42,8 @@ class ClientUser(BaseUser):
 
 
     def __str__(self):
-        return str(self.wallet_address) + " referralcode " + str(self.referral_code) + " by "+ str(self.referred_by)
-        # return str(self.wallet_address) 
+        # return str(self.wallet_address) + " referralcode " + str(self.referral_code) + " by "+ str(self.referred_by)
+        return str(self.wallet_address) 
 
 class Referral(models.Model):
     user = models.ForeignKey(
