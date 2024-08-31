@@ -82,7 +82,8 @@ class Transaction(models.Model):
     ]
     TRANSACTION_TYPE = [
         ('Reward Claim', 'Reward Claim'),
-        ('SuperNode Boost', 'SuperNode Boost'),
+        # ('SuperNode Boost', 'SuperNode Boost'),
+        ('Nodes Operators', 'Nodes Operators'),
         ('Generated SubNode', 'Generated SubNode'),
         ('Stake & Swim Boost', 'Stake & Swim Boost'),
         ('ETH 2.0 Node', 'ETH 2.0 Node'),

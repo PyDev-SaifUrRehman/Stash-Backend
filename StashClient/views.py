@@ -293,7 +293,7 @@ class TransactionViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = super().get_queryset()
         queryset = queryset.filter(transaction_type__in=[
-                                    'SuperNode Boost', 'Generated SubNode', 'Stake & Swim Boost', 'ETH 2.0 Node'])
+                                    'Nodes Operators', 'Generated SubNode', 'Stake & Swim Boost', 'ETH 2.0 Node',    'Generated SuperNode', 'Generated SuperNode'])
         wallet_address = self.request.query_params.get('address')
         all = self.request.query_params.get('all')
         if all:
@@ -431,7 +431,7 @@ class TransactionViewset(viewsets.ModelViewSet):
         if stake_swim_quantity:
             Transaction.objects.create(sender=sender, amount=total_amount_stake, transaction_type='Stake & Swim Boost', block_id = block_id, trx_hash = trx_hash, node_id = node_id, node = node, server_type = server_type, stake_swim_quantity = stake_swim_quantity)
         if supernode_quantity:
-            Transaction.objects.create(sender=sender, amount=total_amount_super, transaction_type='SuperNode Boost', block_id = block_id, trx_hash = trx_hash, node_id = node_id, node = node, server_type = server_type, supernode_quantity = supernode_quantity)
+            Transaction.objects.create(sender=sender, amount=total_amount_super, transaction_type='Nodes Operators', block_id = block_id, trx_hash = trx_hash, node_id = node_id, node = node, server_type = server_type, supernode_quantity = supernode_quantity)
 
         distribute_to_partners(node, setup_charges, block_id, trx_hash)
         print("distributeddd")
@@ -616,7 +616,7 @@ class ExhaustedNodeViewset(viewsets.ModelViewSet):
             transactions_list = Transaction.objects.filter(sender__in=exhausted_users, transaction_type='ETH 2.0 Node')
             eth_node_sum = transactions_list.aggregate(node_quantity = Sum('node_quantity'))['node_quantity'] or 0
             stake_boost_sum = Transaction.objects.filter(sender__in=exhausted_users, transaction_type='Stake & Swim Boost').aggregate(stake_swim_quantity = Sum('stake_swim_quantity'))['stake_swim_quantity'] or 0
-            super_boost_sum = Transaction.objects.filter(sender__in=exhausted_users, transaction_type='SuperNode Boost').aggregate(supernode_quantity = Sum('supernode_quantity'))['supernode_quantity'] or 0
+            super_boost_sum = Transaction.objects.filter(sender__in=exhausted_users, transaction_type='Nodes Operators').aggregate(supernode_quantity = Sum('supernode_quantity'))['supernode_quantity'] or 0
             revenue_generated = Transaction.objects.filter(sender__in = exhausted_users, transaction_type = 'ETH 2.0 Node').aggregate(amount = Sum('amount'))['amount'] or 0
             timestamp = transactions_list.first().timestamp
             print(eth_node_sum)
