@@ -57,7 +57,8 @@ def handle_commission_transfer(referred_by_user, referred_user, referral_commiss
     referred_by_maturity = referred_user.maturity
     # referral = referred_user.referred_by
     referral = referred_by_user
-    print("referreddd", referral)
+    print("referreddd", referred_by_maturity,referred_user.claimed_reward)
+
 
     if referred_by_maturity - referred_user.claimed_reward >= referral_commission:
         commission_amount = Decimal(referral_commission)

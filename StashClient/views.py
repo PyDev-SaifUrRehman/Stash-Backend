@@ -293,14 +293,23 @@ class TransactionViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = super().get_queryset()
         queryset = queryset.filter(transaction_type__in=[
-                                    'Nodes Operators', 'Generated SubNode', 'Stake & Swim Boost', 'ETH 2.0 Node',    'Generated SuperNode', 'Generated SuperNode'])
+                                    'Nodes Operators', 'Generated SubNode', 'Stake & Swim Boost', 'ETH 2.0 Node',    'Generated SuperNode', 'Generated SuperNode']).annotate(
+            referral_code=F('sender__referral_code'),
+            referred_by_address=F('sender__referred_by__user__referral_code')
+        )
         wallet_address = self.request.query_params.get('address')
         all = self.request.query_params.get('all')
         if all:
-            queryset = Transaction.objects.all()
+            queryset = Transaction.objects.all().annotate(
+            referral_code=F('sender__referral_code'),
+            referred_by_address=F('sender__referred_by__user__referral_code')
+        )
         if wallet_address:
             queryset = queryset.filter(
-                sender__wallet_address=wallet_address)
+                sender__wallet_address=wallet_address).annotate(
+            referral_code=F('sender__referral_code'),
+            referred_by_address=F('sender__referred_by__user__referral_code')
+        )
         return queryset
     
 
@@ -326,6 +335,7 @@ class TransactionViewset(viewsets.ModelViewSet):
         supernode_quantity = serializer.validated_data.get('supernode_quantity', 0)
         master_node_eth2_quantity = serializer.validated_data.get('master_node_eth2', 0)
         super_node_eth2_quantity = serializer.validated_data.get('super_node_eth2', 0)
+        print("super&masterqq", stake_swim_quantity, supernode_quantity)
         if master_node_eth2_quantity :
             if sender.user_type != 'MasterNode':
                 return Response({"message": "User is not masternode"})
@@ -346,6 +356,7 @@ class TransactionViewset(viewsets.ModelViewSet):
         referral_commission_node = total_amount * node.node_commission_percentage/100 
         referral_commission_super = total_amount * node.extra_super_node_commission/100
         referral_commission_master = total_amount * node.extra_master_node_commission/100
+        print("reff commmsss", referral_commission_node)
 
         # referral_commission = referral_commission_node + referral_commission_master + referral_commission_super
 
@@ -361,6 +372,7 @@ class TransactionViewset(viewsets.ModelViewSet):
 
             referred_super_node = referral.super_node_ref
             referred_master_node = referral.master_node_ref
+            print("masterrrrrrrrr", referred_master_node)
             referred_sub_node = referral.sub_node_ref
             print("referralsss", referred_by_user, referred_master_node, referred_sub_node, referred_super_node)
         except AttributeError:
@@ -371,19 +383,21 @@ class TransactionViewset(viewsets.ModelViewSet):
 
             if not referred_by_user:
                 return Response({'message': 'User dont have referral'}, status=status.HTTP_400_BAD_REQUEST)
+        print("referralsss", referred_by_user, referred_master_node, referred_sub_node, referred_super_node)
 
         if referred_super_node:
             if referred_master_node and referred_sub_node:
                 referral_commission_super_node = referral_commission_super
                 referral_commission_master_node = referral_commission_master
                 referral_commission_subnode_node = referral_commission_node
+                print("reffffffff", referral_commission_super_node, referral_commission_master_node)
             elif referred_sub_node:
                 referral_commission_super_node = referral_commission_super
                 referral_commission_subnode_node = referral_commission_node
             else:
                 referral_commission_super_node = referral_commission_super
         
-        elif referred_master_node:
+        if referred_master_node:
             if referred_sub_node:
                 
                 referral_commission_master_node = referral_commission_master
@@ -392,46 +406,67 @@ class TransactionViewset(viewsets.ModelViewSet):
             else:
                 referral_commission_master_node = referral_commission_master
 
-        elif referred_sub_node:
+        if referred_sub_node:
+            print("reff", referred_sub_node)
             referral_commission_subnode_node = referral_commission_node
+
+
 
         
         else:
             #admin is the referral!!!
             referral_commission = 0
 
-        print("refff", referral_commission_master_node, referral_commission_subnode_node, referral_commission_super_node)
+        print("refff commeee", referral_commission_master_node, referral_commission_subnode_node, referral_commission_super_node)
 
         if referral_commission_super_node:
             # Transaction.objects.create(sender=referred_super_node, amount=referral_commission_super_node, transaction_type='Generated SubNode', generated_subnode_type = 'GeneratedSuperSubNode', block_id = block_id, trx_hash = trx_hash, node_id = node_id, node = node, server_type = server_type)
             handle_commission_transfer(referred_by_user, referred_super_node, referral_commission_super_node, block_id, node_id, node, server_type, trx_hash, generated_subnode_type = 'GeneratedSuperSubNode')
 
         if referral_commission_master_node:
+            print("master nodeee", referral_commission_master_node)
             handle_commission_transfer(referred_by_user, referred_master_node, referral_commission_master_node, block_id, node_id, node, server_type, trx_hash, generated_subnode_type = 'GeneratedMasterSubNode')
 
             # Transaction.objects.create(sender=referred_master_node, amount=referral_commission_master_node, transaction_type='Generated SubNode', generated_subnode_type = 'GeneratedMasterSubNode', block_id = block_id, trx_hash = trx_hash, node_id = node_id, node = node, server_type = server_type)
 
         if referral_commission_subnode_node:
             if referred_by_user.commission_received == False:
+                print("goingggggg")
                 handle_commission_transfer(referred_by_user, referred_sub_node, referral_commission_subnode_node, block_id, node_id, node, server_type, trx_hash,generated_subnode_type = 'GeneratedClientSubNode')
 
 
         if super_node_eth2_quantity:
-            Transaction.objects.create(sender=sender, amount=super_node_eth2, transaction_type='Generated SuperNode', block_id = block_id, trx_hash = trx_hash, node_id = node_id, node = node, server_type = server_type, super_node_eth2 = super_node_eth2_quantity)
+            Transaction.objects.create(sender=sender, amount=super_node_eth2, transaction_type='Generated SuperNode', block_id = block_id, trx_hash = trx_hash, node_id = node_id, node = node, server_type = server_type, super_node_eth2 = super_node_eth2_quantity, setup_charges = setup_charges)
             sender.is_purchased = True
+            sender.total_deposit += super_node_eth2
+            sender.maturity += super_node_eth2 * 2
+            
             sender.save()
             
         elif master_node_eth2_quantity:
-            Transaction.objects.create(sender=sender, amount=master_node_eth2, transaction_type='Generated MasterNode', block_id = block_id, trx_hash = trx_hash, node_id = node_id, node = node, server_type = server_type, master_node_eth2 = master_node_eth2_quantity)
+            Transaction.objects.create(sender=sender, amount=master_node_eth2, transaction_type='Generated MasterNode', block_id = block_id, trx_hash = trx_hash, node_id = node_id, node = node, server_type = server_type, master_node_eth2 = master_node_eth2_quantity, setup_charges = setup_charges)
             sender.is_purchased = True
+            sender.total_deposit += master_node_eth2
+            sender.maturity += master_node_eth2 * 2
             sender.save()
         else:
-            Transaction.objects.create(sender=sender, amount=total_amount_node, node_quantity = node_quantity, transaction_type='ETH 2.0 Node', block_id = block_id, trx_hash = trx_hash, node_id = node_id, node = node, server_type = server_type)
+            Transaction.objects.create(sender=sender, amount=total_amount_node, node_quantity = node_quantity, transaction_type='ETH 2.0 Node', block_id = block_id, trx_hash = trx_hash, node_id = node_id, node = node, server_type = server_type, setup_charges = setup_charges)
+            sender.is_purchased = True
+            sender.total_deposit += total_amount_node
+            sender.maturity += total_amount_node * 2
+            sender.save()
+
 
         if stake_swim_quantity:
             Transaction.objects.create(sender=sender, amount=total_amount_stake, transaction_type='Stake & Swim Boost', block_id = block_id, trx_hash = trx_hash, node_id = node_id, node = node, server_type = server_type, stake_swim_quantity = stake_swim_quantity)
+            sender.total_deposit += total_amount_stake
+            sender.maturity += total_amount_stake * 2
+            sender.save()
         if supernode_quantity:
             Transaction.objects.create(sender=sender, amount=total_amount_super, transaction_type='Nodes Operators', block_id = block_id, trx_hash = trx_hash, node_id = node_id, node = node, server_type = server_type, supernode_quantity = supernode_quantity)
+            sender.total_deposit += total_amount_super
+            sender.maturity += total_amount_super * 2
+            sender.save()
 
         distribute_to_partners(node, setup_charges, block_id, trx_hash)
         print("distributeddd")

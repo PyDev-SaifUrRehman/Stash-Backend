@@ -139,7 +139,9 @@ class AdminNodeOverview(viewsets.ModelViewSet):
 
         total_eth2_nodes_count = Transaction.objects.filter(transaction_type = 'ETH 2.0 Node').aggregate(total_eth2_nodes_count = Sum('node_quantity'))['total_eth2_nodes_count'] or 0
         stake_swim_boostcount = Transaction.objects.filter(transaction_type = 'Stake & Swim Boost').aggregate(stake_swim_quantity = Sum('stake_swim_quantity'))['stake_swim_quantity'] or 0
-        total_super_nodes_count = Transaction.objects.filter(transaction_type = 'Generated SuperNode').aggregate(super_node_eth2 = Sum('super_node_eth2'))['super_node_eth2'] or 0
+        # total_super_nodes_count = Transaction.objects.filter(transaction_type = 'Generated SuperNode').aggregate(super_node_eth2 = Sum('super_node_eth2'))['super_node_eth2'] or 0
+        total_super_nodes_count = Transaction.objects.filter(transaction_type = 'Nodes Operators').aggregate(supernode_quantity = Sum('supernode_quantity'))['supernode_quantity'] or 0
+
         total_setup_fee = Transaction.objects.all().aggregate(setup_charges = Sum('setup_charges'))['setup_charges'] or 0
         # active_nodes_balance = 0  #node amount that are not exausted, mean maturity - withdrawal == 0 users
         # active_nodes_balance = ClientUser.objects.exclude(maturity=F('claimed_reward')).aggregate(amount=Sum('total_deposit'))['amount'] or 0
@@ -162,7 +164,9 @@ class AdminClaimViewset(viewsets.ModelViewSet):
     serializer_class = NodePayoutSerializer
 
     def list(self, request, *args, **kwargs):
-        active_nodes_balance = ClientUser.objects.exclude(maturity=F('claimed_reward')).aggregate(amount=Sum('total_deposit'))['amount'] or 0
+        # active_nodes_balance = ClientUser.objects.exclude(maturity=F('claimed_reward')).aggregate(amount=Sum('total_deposit'))['amount'] or 0
+        active_nodes_balance = Transaction.objects.exclude(sender__maturity=F('sender__claimed_reward')).aggregate(amount=Sum('amount'))['amount'] or 0
+        
         claim_rewards = Transaction.objects.filter(transaction_type='Reward Claim').aggregate(amount=Sum('amount'))['amount'] or 0
         all_trx_balance= Transaction.objects.filter(transaction_type = 'ETH 2.0 Node').aggregate(amount = Sum('amount'))['amount'] or 0
         current_net_balance = all_trx_balance - active_nodes_balance
@@ -278,6 +282,8 @@ class GetRevenueSearchViewset(viewsets.GenericViewSet, mixins.ListModelMixin):
             master_node_generated = transactions.filter(generated_subnode_type='GeneratedMasterSubNode')
             master_node_generated_count = master_node_generated.count()
             master_first_transaction = transactions.filter(generated_subnode_type='GeneratedMasterSubNode').order_by('timestamp').first()
+            print('trx', transactions)
+            print("masterrrr time", master_first_transaction)
             master_generated_timestamp = master_first_transaction.timestamp if master_first_transaction else 0
             master_node_generated_revenue = master_node_generated.aggregate(master_node_generated_revenue = Sum('amount'))['master_node_generated_revenue'] or 0
 
@@ -312,4 +318,4 @@ class GetRevenueSearchViewset(viewsets.GenericViewSet, mixins.ListModelMixin):
         except ClientUser.DoesNotExist:
             return Response({'message': 'User not found.'})
         except Exception as e:
-            return Response({"message": f"Error Occurred! {e}"})
+            return Response({"message": f"Error Occurred! {e}"}, status=status.HTTP_400_BAD_REQUEST)
