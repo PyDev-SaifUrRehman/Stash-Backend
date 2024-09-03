@@ -201,13 +201,28 @@ class AddNodeToAdminViewset(viewsets.GenericViewSet, mixins.CreateModelMixin):
         stake_swim_quantity = serializer.validated_data.get('stake_swim_quantity')
         supernode_quantity = serializer.validated_data.get('supernode_quantity')
         node_pass = serializer.validated_data.get('node_pass')
-        # deposit_amount = serializer.validated_data.get('admin_added_deposit', 0)
-        maturity_amount = serializer.validated_data.get('admin_maturity', 0)
-        admin_added_claimed_reward = serializer.validated_data.get('admin_added_claimed_reward', 0)
+        deposit_amount = serializer.validated_data.get('deposit_amount', 0)
+        maturity_amount = serializer.validated_data.get('exhaustion', 0)
+        admin_added_claimed_reward = serializer.validated_data.get('claimed_amount', 0)
+        block_id = serializer.validated_data.get('block_id', 0)
+        transaction_hash = serializer.validated_data.get('transaction_hash', '')
 
-        sender, created = ClientUser.objects.get_or_create(wallet_address = wallet_address, admin_added_claimed_reward = admin_added_claimed_reward, maturity = maturity_amount, referral_code = new_user_referral_code,node_type = 'Node', user_type = 'Client')
-        sender = ClientUser.objects.get(wallet_address = wallet_address)
-        print("sender", sender)
+        # sender, created = ClientUser.objects.get_or_create(wallet_address = wallet_address, admin_added_claimed_reward = admin_added_claimed_reward, maturity = maturity_amount, referral_code = new_user_referral_code,node_type = 'Node', user_type = 'Client')
+
+        sender, created = ClientUser.objects.get_or_create(
+        wallet_address=wallet_address,
+        defaults={
+        'admin_added_claimed_reward': admin_added_claimed_reward,
+        'maturity': maturity_amount,
+        'referral_code': new_user_referral_code,
+        'node_type': 'Node',
+        'user_type': 'Client',
+        'maturity': maturity_amount,
+        'claimed_reward': admin_added_claimed_reward,
+        'total_deposit': deposit_amount
+
+        }
+        )
         try:
             referral_node_pass = ClientUser.objects.get(referral_code = node_pass)
             try:
@@ -215,7 +230,6 @@ class AddNodeToAdminViewset(viewsets.GenericViewSet, mixins.CreateModelMixin):
                     user=referral_node_pass)
             except Referral.DoesNotExist:
                 return Response({"error": "Error to create ref."}, status=status.HTTP_400_BAD_REQUEST)
-            print("referral", referral_node_pass)
             sender.referred_by = referral
             if referral.user.user_type == 'SuperNode':
                 referral.super_node_ref = referral.user
@@ -242,11 +256,21 @@ class AddNodeToAdminViewset(viewsets.GenericViewSet, mixins.CreateModelMixin):
             print("sender", sender  )
 
             if node_quantity:
-                Transaction.objects.create(sender = sender, amount = node_quantity*eth_node_price, transaction_type = 'ETH 2.0 Node',node = node, generated_subnode_type = 'GeneratedClientSubNode', node_quantity = node_quantity)
+                Transaction.objects.create(sender = sender, amount = node_quantity*eth_node_price, transaction_type = 'ETH 2.0 Node',node = node, generated_subnode_type = 'GeneratedClientSubNode', node_quantity = node_quantity, block_id = block_id, trx_hash = transaction_hash)
+                sender.total_deposit += node_quantity*eth_node_price
+                sender.maturity += (node_quantity*eth_node_price) * 2
+                sender.save()
             if supernode_quantity:
-                Transaction.objects.create(sender = sender, amount = supernode_quantity*supernode_booster_price, transaction_type = 'SuperNode Boost',node = node, supernode_quantity = supernode_quantity)
+                Transaction.objects.create(sender = sender, amount = supernode_quantity*supernode_booster_price, transaction_type = 'SuperNode Boost',node = node, supernode_quantity = supernode_quantity,  block_id = block_id, trx_hash = transaction_hash)
+                sender.total_deposit += supernode_quantity*supernode_booster_price
+                sender.maturity += (supernode_quantity*supernode_booster_price) * 2
+                sender.save()
+
             if stake_swim_quantity:
-                Transaction.objects.create(sender=sender, amount=stake_swim_quantity*stake_swim_booster_price, transaction_type='Stake & Swim Boost',node = node, stake_swim_quantity = stake_swim_quantity)
+                Transaction.objects.create(sender=sender, amount=stake_swim_quantity*stake_swim_booster_price, transaction_type='Stake & Swim Boost',node = node, stake_swim_quantity = stake_swim_quantity,  block_id = block_id, trx_hash = transaction_hash)
+                sender.total_deposit += stake_swim_quantity*stake_swim_booster_price
+                sender.maturity += (stake_swim_quantity*stake_swim_booster_price) * 2
+                sender.save()
         except Exception as e:
             return Response({"message": f"something went wrong {e}"}, status=status.HTTP_400_BAD_REQUEST)
         serializer_data = serializer.data
@@ -277,7 +301,6 @@ class GetRevenueSearchViewset(viewsets.GenericViewSet, mixins.ListModelMixin):
             subnode_first_transaction = transactions.filter(generated_subnode_type='GeneratedClientSubNode').order_by('timestamp').first()
             subnode_generated_timestamp = subnode_first_transaction.timestamp if subnode_first_transaction else 0
             subnode_generated_revenue = subnode_generated.aggregate(subnode_generated_revenue = Sum('amount'))['subnode_generated_revenue'] or 0
-            
 
             master_node_generated = transactions.filter(generated_subnode_type='GeneratedMasterSubNode')
             master_node_generated_count = master_node_generated.count()

@@ -72,7 +72,6 @@ class ClientUserViewSet(viewsets.ModelViewSet):
             else:
                 referred_by_code =  None
 
-
         except: 
             referrals = 0
         serializer_data = serializer.data
@@ -233,10 +232,13 @@ class ClaimViewSet(viewsets.ModelViewSet):
         except AttributeError:
             referred_by_user = None
             referred_super_node = None
-            referred_master_node = None
+            referred_master_node = None      
 
             if not referred_by_user:
                 return Response({'message': 'User dont have referral'}, status=status.HTTP_400_BAD_REQUEST)
+        referral_commission_master_node = 0
+        referral_commission_super_node = 0
+        referral_commission_admin_user = 0
         
         if referred_super_node:
             if referred_master_node:
@@ -257,18 +259,28 @@ class ClaimViewSet(viewsets.ModelViewSet):
 
         if referral_commission_super_node:
             Transaction.objects.create(sender=referred_super_node, amount=referral_commission_super_node, transaction_type='Generated SubNode', generated_subnode_type = 'GeneratedSuperSubNode', trx_hash = trx_hash, node_id = node_id, node = node, block_id = block_id)
-
+            # sender.total_deposit += referral_commission_super_node
+            # sender.maturity += referral_commission_super_node * 2
+            # sender.save()
+            referred_super_node.claimed_reward += referral_commission_super_node
+            referred_super_node.save()
 
         if referral_commission_master_node:
 
             Transaction.objects.create(sender=referred_master_node, amount=referral_commission_master_node, transaction_type='Generated SubNode', generated_subnode_type = 'GeneratedMasterSubNode', trx_hash = trx_hash, node_id = node_id, node = node, block_id = block_id)
+            referred_master_node.claimed_reward += referral_commission_master_node
+            referred_master_node.save()
 
         if referral_commission_admin_user:
 
             Transaction.objects.create(sender=admin_user, amount=referral_commission_admin_user, transaction_type='Generated SubNode', generated_subnode_type = 'GeneratedAdminSubNode', trx_hash = trx_hash, node_id = node_id, node = node, block_id = block_id)
+            admin_user.claimed_reward += referral_commission_admin_user
+            admin_user.save()
 
 
         Transaction.objects.create(sender=sender, amount=total_amount, transaction_type='Reward Claim', trx_hash = trx_hash, node_id = node_id, node = node, block_id = block_id)
+        sender.claimed_reward -= total_amount
+        sender.save()
 
         return Response({'message': 'Transaction created successfully'})
     
@@ -296,20 +308,20 @@ class TransactionViewset(viewsets.ModelViewSet):
                                     'Nodes Operators', 'Generated SubNode', 'Stake & Swim Boost', 'ETH 2.0 Node',    'Generated SuperNode', 'Generated SuperNode']).annotate(
             referral_code=F('sender__referral_code'),
             referred_by_address=F('sender__referred_by__user__referral_code')
-        )
+        ).order_by('-timestamp') 
         wallet_address = self.request.query_params.get('address')
         all = self.request.query_params.get('all')
         if all:
             queryset = Transaction.objects.all().annotate(
             referral_code=F('sender__referral_code'),
             referred_by_address=F('sender__referred_by__user__referral_code')
-        )
+        ).order_by('-timestamp') 
         if wallet_address:
             queryset = queryset.filter(
                 sender__wallet_address=wallet_address).annotate(
             referral_code=F('sender__referral_code'),
             referred_by_address=F('sender__referred_by__user__referral_code')
-        )
+        ).order_by('-timestamp') 
         return queryset
     
 
@@ -431,7 +443,6 @@ class TransactionViewset(viewsets.ModelViewSet):
 
         if referral_commission_subnode_node:
             if referred_by_user.commission_received == False:
-                print("goingggggg")
                 handle_commission_transfer(referred_by_user, referred_sub_node, referral_commission_subnode_node, block_id, node_id, node, server_type, trx_hash,generated_subnode_type = 'GeneratedClientSubNode')
 
 
@@ -440,7 +451,6 @@ class TransactionViewset(viewsets.ModelViewSet):
             sender.is_purchased = True
             sender.total_deposit += super_node_eth2
             sender.maturity += super_node_eth2 * 2
-            
             sender.save()
             
         elif master_node_eth2_quantity:

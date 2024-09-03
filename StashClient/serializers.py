@@ -78,7 +78,7 @@ class ClaimSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Transaction
-        fields = ['sender','node_id', 'transaction_type','amount', 'trx_hash', 'node']
+        fields = ['sender','node_id', 'transaction_type', 'amount', 'block_id', 'trx_hash', 'node']
 
     def validate_node(self, value):
         try:

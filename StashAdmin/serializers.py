@@ -348,7 +348,11 @@ class AddNodeToAdminSerializer(serializers.Serializer):
     node_quantity = serializers.IntegerField(default = 0, write_only = True)
     stake_swim_quantity = serializers.IntegerField(default = 0, write_only = True)
     supernode_quantity = serializers.IntegerField(default = 0, write_only = True)
-    admin_maturity = serializers.IntegerField(default = 0, write_only = True)
+    # admin_maturity = serializers.IntegerField(default = 0, write_only = True)
+    claimed_amount = serializers.IntegerField(default = 0)
+    deposit_amount = serializers.IntegerField(default = 0)
+    block_id = serializers.IntegerField()
+    transaction_hash = serializers.CharField()
     exhaustion = serializers.IntegerField(default = 0)
 
     # class Meta:

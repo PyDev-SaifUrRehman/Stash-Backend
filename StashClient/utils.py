@@ -1,3 +1,4 @@
+from decimal import Decimal
 import random
 import string
 
@@ -48,11 +49,11 @@ def distribute_to_partners(node, claim_fee, block_id, trx_hash):
     for partner in node_partners:
         partner_user, _ = ClientUser.objects.get_or_create(wallet_address=partner.partner_wallet_address)
         Transaction.objects.create(sender=partner_user, amount=claim_fee * partner.share / 100, transaction_type='Generated SubNode', block_id = block_id, trx_hash = trx_hash)
-        print("partnerrrr")
+        partner_user.claimed_reward += claim_fee * partner.share / 100
+        partner_user.save()
     
     return 
 
-from decimal import Decimal
 def handle_commission_transfer(referred_by_user, referred_user, referral_commission, block_id, node_id, node, server_type, trx_hash, generated_subnode_type):
     referred_by_maturity = referred_user.maturity
     # referral = referred_user.referred_by
@@ -114,6 +115,4 @@ def handle_commission_transfer(referred_by_user, referred_user, referral_commiss
         return commission_transaction, commision_added
 
     return None, 0
-
-
 
