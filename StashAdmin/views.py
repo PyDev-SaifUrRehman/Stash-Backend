@@ -259,6 +259,7 @@ class AddNodeToAdminViewset(viewsets.GenericViewSet, mixins.CreateModelMixin):
                 Transaction.objects.create(sender = sender, amount = node_quantity*eth_node_price, transaction_type = 'ETH 2.0 Node',node = node, generated_subnode_type = 'GeneratedClientSubNode', node_quantity = node_quantity, block_id = block_id, trx_hash = transaction_hash)
                 sender.total_deposit += node_quantity*eth_node_price
                 sender.maturity += (node_quantity*eth_node_price) * 2
+                sender.is_purchased = True
                 sender.save()
             if supernode_quantity:
                 Transaction.objects.create(sender = sender, amount = supernode_quantity*supernode_booster_price, transaction_type = 'SuperNode Boost',node = node, supernode_quantity = supernode_quantity,  block_id = block_id, trx_hash = transaction_hash)
