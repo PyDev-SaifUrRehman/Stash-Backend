@@ -306,21 +306,21 @@ class TransactionViewset(viewsets.ModelViewSet):
         queryset = super().get_queryset()
         queryset = queryset.filter(transaction_type__in=[
                                     'Nodes Operators', 'Generated SubNode', 'Stake & Swim Boost', 'ETH 2.0 Node',    'Generated SuperNode', 'Generated SuperNode']).annotate(
-            referral_code=F('sender__referral_code'),
-            referred_by_address=F('sender__referred_by__user__referral_code')
+            nodepass=F('sender__referral_code'),
+            referred_nodepass=F('sender__referred_by__user__referral_code')
         ).order_by('-timestamp') 
         wallet_address = self.request.query_params.get('address')
         all = self.request.query_params.get('all')
         if all:
             queryset = Transaction.objects.all().annotate(
-            referral_code=F('sender__referral_code'),
-            referred_by_address=F('sender__referred_by__user__referral_code')
+            nodepass=F('sender__referral_code'),
+            referred_nodepass=F('sender__referred_by__user__referral_code')
         ).order_by('-timestamp') 
         if wallet_address:
             queryset = queryset.filter(
                 sender__wallet_address=wallet_address).annotate(
-            referral_code=F('sender__referral_code'),
-            referred_by_address=F('sender__referred_by__user__referral_code')
+            nodepass=F('sender__referral_code'),
+            referred_nodepass=F('sender__referred_by__user__referral_code')
         ).order_by('-timestamp') 
         return queryset
     
@@ -626,7 +626,11 @@ class AuthorizedNodeViewset(viewsets.ModelViewSet):
             user = ClientUser.objects.get(wallet_address = user_wallet_address)
         except ClientUser.DoesNotExist:
             return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
-        
+
+
+        if user.user_type == 'SuperNode' or user.user_type == 'MasterNode':
+            if user_with_referral_code.user_type == 'Client':
+                return Response({"error": "Node can't authorize this type of node."}, status=status.HTTP_403_FORBIDDEN)
         user.referred_by = referral
         
         try:
