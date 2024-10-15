@@ -633,21 +633,22 @@ class TransactionViewset(viewsets.ModelViewSet):
 
         if referral_commission_master_node:
             # handle_commission_transfer(sender, referred_by_user, referred_master_node, referral_commission_master_node, block_id, node_id, node, server_type, trx_hash, node_quantity, master_node_eth2_quantity, super_node_eth2_quantity, generated_subnode_type = 'GeneratedMasterSubNode')
+            if sender.is_purchased:
 
-            Transaction.objects.create(
-                sender=referred_master_node,
-                amount=referral_commission_master_node,
-                transaction_type="Generated SubNode",
-                block_id=block_id,
-                node_id=node_id,
-                node=node,
-                server_type=server_type,
-                trx_hash=trx_hash,
-                stake_swim_quantity=0,
-                supernode_quantity=0,
-                node_quantity=0,
-                generated_subnode_type="GeneratedMasterSubNode",
-            )
+                Transaction.objects.create(
+                    sender=referred_master_node,
+                    amount=referral_commission_master_node,
+                    transaction_type="Generated SubNode",
+                    block_id=block_id,
+                    node_id=node_id,
+                    node=node,
+                    server_type=server_type,
+                    trx_hash=trx_hash,
+                    stake_swim_quantity=0,
+                    supernode_quantity=0,
+                    node_quantity=0,
+                    generated_subnode_type="GeneratedMasterSubNode",
+                )
 
         if referral_commission_subnode_node:
             if referred_by_user.commission_received == False:
