@@ -5,7 +5,7 @@ from StashAdmin.serializers import NodeSetupSerializer
 
 class ClientUserSerializer(serializers.ModelSerializer):
     referral_code = serializers.CharField(read_only=True)
-    referred_by = serializers.CharField()
+    referred_by = serializers.CharField(required = False)
     
     class Meta:
         model = ClientUser
