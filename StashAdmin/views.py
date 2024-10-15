@@ -182,6 +182,8 @@ class AdminClaimViewset(viewsets.ModelViewSet):
         serializer = NodePayoutSerializer(
             node_payout, data=request.data, context={'request': request})
         if serializer.is_valid():
+            amount = serializer.validated_data.get('amount', None)
+            
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

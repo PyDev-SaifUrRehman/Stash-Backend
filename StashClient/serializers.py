@@ -99,10 +99,20 @@ class NodePassAuthorizedSerializer(serializers.Serializer):
 
 class FirstTimeBuyingSerializer(serializers.ModelSerializer):
     # sender = serializers.CharField()
-
+    sender = AddressToUserField(
+        queryset=ClientUser.objects.all())
+    
     class Meta:
         model = Transaction
         fields = '__all__'
-        fields = ['sender', 'trx_hash', 'server_type', 'timestamp', 'setup_charges', 'block_id', 'referred_wallet_address']
+        fields = ['sender', 'trx_hash', 'server_type', 'timestamp', 'setup_charges', 'block_id']
 
-    
+    # def validate_referred_wallet_address(self, code):
+    #     try:
+    #         user = ClientUser.objects.get(referral_code=code)
+    #         if user:
+    #             return user
+    #         else:
+    #             raise serializers.ValidationError("No user with this referral code")
+    #     except ClientUser.DoesNotExist:
+    #         raise serializers.ValidationError("No user with this referral code")

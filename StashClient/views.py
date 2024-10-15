@@ -1007,13 +1007,6 @@ class FirstTimeBuyingViewset(viewsets.ModelViewSet):
                     {"error": "User type is not masternode or supernode"},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            Transaction.objects.create(
-                sender=user,
-                amount=amount,
-                server_type=server_type,
-                trx_hash=trx_hash,
-                transaction_type=transaction_type,
-            )
             distribute_to_partners(
                 user, node, amount + setup_charges, block_id, trx_hash
             )
