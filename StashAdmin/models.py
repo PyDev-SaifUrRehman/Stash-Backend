@@ -66,7 +66,7 @@ class AdminReferral(models.Model):
         'StashClient.Transaction', on_delete=models.CASCADE, blank=True, null=True, related_name='admin_referral_trx')
     no_of_referred_users = models.PositiveIntegerField(default=0)
     commission_earned = models.DecimalField(
-        max_digits=14, decimal_places=2, default=0)
+        max_digits=14, decimal_places=6, default=0)
     commission_received = models.BooleanField(default=False)
 
     def increase_referred_users(self):

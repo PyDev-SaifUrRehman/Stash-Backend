@@ -120,10 +120,10 @@ def handle_commission_transfer(
         # referred_user.save()
         if node_quantity:
             referred_user.total_subnode_generated += node_quantity
-        if master_node_eth2_quantity:
-            referred_user.total_masternode_generated += master_node_eth2_quantity
-        if super_node_eth2_quantity:
-            referred_user.total_supernode_generated += super_node_eth2_quantity
+        # if master_node_eth2_quantity:
+        #     referred_user.total_masternode_generated += master_node_eth2_quantity
+        # if super_node_eth2_quantity:
+        #     referred_user.total_supernode_generated += super_node_eth2_quantity
         referred_user.save()
         return commission_transaction, commission_amount
 
@@ -157,10 +157,10 @@ def handle_commission_transfer(
         referral.save()
         if node_quantity:
             referred_user.total_subnode_generated += node_quantity
-        if master_node_eth2_quantity:
-            referred_user.total_masternode_generated += master_node_eth2_quantity
-        if super_node_eth2_quantity:
-            referred_user.total_supernode_generated += super_node_eth2_quantity
+        # if master_node_eth2_quantity:
+        #     referred_user.total_masternode_generated += master_node_eth2_quantity
+        # if super_node_eth2_quantity:
+        #     referred_user.total_supernode_generated += super_node_eth2_quantity
         referred_user.save()
         return commission_transaction, commision_added
 

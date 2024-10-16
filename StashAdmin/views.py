@@ -140,9 +140,13 @@ class AdminNodeOverview(viewsets.ModelViewSet):
         total_eth2_nodes_count = Transaction.objects.filter(transaction_type = 'ETH 2.0 Node').aggregate(total_eth2_nodes_count = Sum('node_quantity'))['total_eth2_nodes_count'] or 0
         stake_swim_boostcount = Transaction.objects.filter(transaction_type = 'Stake & Swim Boost').aggregate(stake_swim_quantity = Sum('stake_swim_quantity'))['stake_swim_quantity'] or 0
         # total_super_nodes_count = Transaction.objects.filter(transaction_type = 'Generated SuperNode').aggregate(super_node_eth2 = Sum('super_node_eth2'))['super_node_eth2'] or 0
-        total_super_nodes_count = Transaction.objects.filter(transaction_type = 'Nodes Operators').aggregate(supernode_quantity = Sum('supernode_quantity'))['supernode_quantity'] or 0
+        total_node_booster_count = Transaction.objects.filter(transaction_type = 'Nodes Operators').aggregate(supernode_quantity = Sum('supernode_quantity'))['supernode_quantity'] or 0
+        
+        total_sub_nodes = ClientUser.objects.filter(is_purchased = True).aggregate(total_subnode_generated = Sum('total_subnode_generated'))['total_subnode_generated'] or 0
+        total_master_nodes = ClientUser.objects.filter(user_type = 'MasterNode', is_purchased=True).count()
+        total_super_nodes = ClientUser.objects.filter(user_type = 'SuperNode', is_purchased = True).count()
 
-        total_setup_fee = Transaction.objects.all().aggregate(setup_charges = Sum('setup_charges'))['setup_charges'] or 0
+        total_setup_fee = Transaction.objects.filter(transaction_type = 'ETH 2.0 Node').aggregate(setup_charges = Sum('setup_charges'))['setup_charges'] or 0
         # active_nodes_balance = 0  #node amount that are not exausted, mean maturity - withdrawal == 0 users
         # active_nodes_balance = ClientUser.objects.exclude(maturity=F('claimed_reward')).aggregate(amount=Sum('total_deposit'))['amount'] or 0
         active_nodes_balance = Transaction.objects.exclude(sender__maturity=F('sender__claimed_reward')).aggregate(amount=Sum('amount'))['amount'] or 0
@@ -157,8 +161,9 @@ class AdminNodeOverview(viewsets.ModelViewSet):
         # total_revenue = 0 # sum of these fees...
         total_revenue = total_setup_fee + node_pass_revenue 
 
-        return Response({'total_eth2_nodes_count': total_eth2_nodes_count, 'stake_swim_boostcount': stake_swim_boostcount, 'total_setup_fee' : total_setup_fee, 'total_super_nodes_count' : total_super_nodes_count, 'active_nodes_balance':active_nodes_balance,'current_reward_balance':current_reward_balance, 'node_pass_revenue' :node_pass_revenue, 'total_revenue': total_revenue })
+        return Response({'total_eth2_nodes_count': total_eth2_nodes_count, 'stake_swim_boostcount': stake_swim_boostcount, 'total_node_booster_count': total_node_booster_count, 'total_sub_nodes': total_sub_nodes, 'total_master_nodes':total_master_nodes, 'total_setup_fee' : total_setup_fee, 'total_super_nodes' : total_super_nodes, 'active_nodes_balance':active_nodes_balance,'current_reward_balance':current_reward_balance, 'node_pass_revenue' :node_pass_revenue, 'total_revenue': total_revenue })
 
+from decimal import Decimal
 
 class AdminClaimViewset(viewsets.ModelViewSet):
     serializer_class = NodePayoutSerializer
@@ -176,16 +181,70 @@ class AdminClaimViewset(viewsets.ModelViewSet):
         return Response({'active_nodes_balance': active_nodes_balance, 'claim_rewards': claim_rewards, 'current_net_balance': current_net_balance, "node_payout_amount":node_payout_amount
         })
 
-    @action(methods=['put'], detail=False)    
+#     @action(methods=['put'], detail=False)    
+#     def updatepayout(self, request, pk=None):
+#         node_payout, created = NodePayout.objects.get_or_create(pk=1)
+#         serializer = NodePayoutSerializer(
+#             node_payout, data=request.data, context={'request': request})
+#         if serializer.is_valid():
+#             amount = serializer.validated_data.get('amount', None)
+            
+#             serializer.save()
+#             return Response(serializer.data)
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(methods=['put'], detail=False)
     def updatepayout(self, request, pk=None):
         node_payout, created = NodePayout.objects.get_or_create(pk=1)
         serializer = NodePayoutSerializer(
             node_payout, data=request.data, context={'request': request})
+        
         if serializer.is_valid():
-            amount = serializer.validated_data.get('amount', None)
-            
+            amount_to_distribute = serializer.validated_data.get('amount', None)
+            if amount_to_distribute is None or amount_to_distribute <= 0:
+                return Response({"error": "Amount must be greater than zero."}, status=status.HTTP_400_BAD_REQUEST)
+
+            users_to_payout = ClientUser.objects.filter(maturity__gt=F('claimed_reward'))
+
+            if not users_to_payout.exists():
+                return Response({"message": "No users to payout."}, status=status.HTTP_400_BAD_REQUEST)
+
+            total_users = users_to_payout.count()
+            amount_per_user = Decimal(amount_to_distribute) / Decimal(total_users)
+
+            for user in users_to_payout:
+                remaining_maturity = user.maturity - user.claimed_reward
+                payout_amount = min(amount_per_user, remaining_maturity)
+
+                user.claimed_reward += payout_amount
+                user.save()
+
+                # Transaction.objects.create(
+                #     sender=user,
+                #     amount=payout_amount,
+                #     transaction_type="Payout",
+                #     block_id=None,  
+                #     node_id=None,   
+                #     node=None,      
+                #     server_type=None, 
+                #     trx_hash=None,  
+                #     stake_swim_quantity=0,
+                #     supernode_quantity=0,
+                #     node_quantity=0,
+                #     generated_subnode_type=None,  
+                #     referred_wallet_address=user.wallet_address
+                # )
+
             serializer.save()
-            return Response(serializer.data)
+
+            return Response({
+                'message': 'Payout Successful',
+                'node_payout': serializer.data,
+                'distributed_amount': amount_to_distribute,
+                'amount_per_user': amount_per_user,
+                'total_users': total_users
+            })
+
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 

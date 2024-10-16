@@ -116,3 +116,4 @@ class FirstTimeBuyingSerializer(serializers.ModelSerializer):
     #             raise serializers.ValidationError("No user with this referral code")
     #     except ClientUser.DoesNotExist:
     #         raise serializers.ValidationError("No user with this referral code")
+    

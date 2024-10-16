@@ -630,6 +630,8 @@ class TransactionViewset(viewsets.ModelViewSet):
                     generated_subnode_type="GeneratedSuperSubNode",
                     referred_wallet_address=sender,
                 )
+                referred_super_node.total_subnode_generated += node_quantity
+                referred_super_node.save()
 
         if referral_commission_master_node:
             # handle_commission_transfer(sender, referred_by_user, referred_master_node, referral_commission_master_node, block_id, node_id, node, server_type, trx_hash, node_quantity, master_node_eth2_quantity, super_node_eth2_quantity, generated_subnode_type = 'GeneratedMasterSubNode')
@@ -649,6 +651,8 @@ class TransactionViewset(viewsets.ModelViewSet):
                     node_quantity=0,
                     generated_subnode_type="GeneratedMasterSubNode",
                 )
+                referred_master_node.total_subnode_generated += node_quantity
+                referred_master_node.save()
 
         if referral_commission_subnode_node:
             if referred_by_user.commission_received == False:
@@ -998,22 +1002,33 @@ class FirstTimeBuyingViewset(viewsets.ModelViewSet):
             master_node_amount = node.master_node_cost
             if user.user_type == "MasterNode":
                 amount = master_node_amount
-                transaction_type = "MasterNode Nodepass"
+                # transaction_type = "MasterNode Nodepass"
             elif user.user_type == "SuperNode":
                 amount = super_node_amount
-                transaction_type = "SuperNode Nodepass"
+                # transaction_type = "SuperNode Nodepass"
             else:
                 return Response(
                     {"error": "User type is not masternode or supernode"},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
+            # Transaction.objects.create(
+            #     sender=user,
+            #     amount=amount,
+            #     server_type=server_type,
+            #     trx_hash=trx_hash,
+            #     transaction_type=transaction_type,
+            # )
             distribute_to_partners(
                 user, node, amount + setup_charges, block_id, trx_hash
             )
             user.is_purchased = True
+            user.save()
+            if user.user_type == 'MasterNode':
+                user.referred_by.user.total_masternode_generated += 1
             # user.total_deposit += amount
             # user.maturity += amount * 2
-            user.save()
+                user.referred_by.user.save()
+                user.referred_by.save()
             return Response("First-time buying successful", status=status.HTTP_200_OK)
         except:
             return Response(
