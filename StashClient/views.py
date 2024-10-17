@@ -1004,11 +1004,13 @@ class FirstTimeBuyingViewset(viewsets.ModelViewSet):
         user_wallet_address = serializer.validated_data.get("sender")
         trx_hash = serializer.validated_data.get("trx_hash")
         block_id = serializer.validated_data.get("block_id")
-        setup_charges = serializer.validated_data.get("setup_charges", None)
+        setup_charges = serializer.validated_data.get("setup_charges", 0)
         server_type = serializer.validated_data.get("server_type", None)
 
         try:
+            print("userr", user_wallet_address)
             user = ClientUser.objects.get(wallet_address=user_wallet_address)
+            print("userr", user)
             if user.is_purchased:
                 return Response(
                     {"error": "User has already made a first-time buying"},
@@ -1041,14 +1043,15 @@ class FirstTimeBuyingViewset(viewsets.ModelViewSet):
             user.is_purchased = True
             user.save()
             if user.user_type == 'MasterNode':
+                print("user", user.referred_by)
                 user.referred_by.user.total_masternode_generated += 1
             # user.total_deposit += amount
             # user.maturity += amount * 2
                 user.referred_by.user.save()
                 user.referred_by.save()
             return Response({"message": "First-time buying successful"}, status=status.HTTP_200_OK)
-        except:
+        except Exception as e:
             return Response(
-                {"error": "User not found"}, status=status.HTTP_404_NOT_FOUND
+                {"error": f"User not found{e}"}, status=status.HTTP_404_NOT_FOUND
             )
         # return super().create(request, *args, **kwargs)

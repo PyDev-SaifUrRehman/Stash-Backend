@@ -101,15 +101,18 @@ class NodePassAuthorizedSerializer(serializers.Serializer):
 
 
 class FirstTimeBuyingSerializer(serializers.ModelSerializer):
-    # sender = serializers.CharField()
-    sender = AddressToUserField(
-        queryset=ClientUser.objects.all())
+    sender = serializers.CharField()
+    # sender = AddressToUserField(
+    #     queryset=ClientUser.objects.all())
+    server_type = serializers.CharField(required=False)
+    setup_charges = serializers.DecimalField(
+        max_digits=10, decimal_places=2, required=False)
 
     class Meta:
         model = Transaction
-        fields = '__all__'
+        # fields = '__all__'
         fields = ['sender', 'trx_hash', 'server_type',
-                  'timestamp', 'setup_charges', 'block_id']
+                  'setup_charges', 'block_id']
 
     # def validate_referred_wallet_address(self, code):
     #     try:
