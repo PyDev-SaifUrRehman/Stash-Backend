@@ -168,7 +168,8 @@ class GetRefAdressViewset(viewsets.GenericViewSet, ListModelMixin):
             )
 
         try:
-            user_with_referral_code = ClientUser.objects.get(referral_code=ref_code)
+            user_with_referral_code = ClientUser.objects.get(
+                referral_code=ref_code)
         except ClientUser.DoesNotExist:
             return Response(
                 {"error": "Invalid referral code"}, status=status.HTTP_400_BAD_REQUEST
@@ -183,7 +184,8 @@ class GetRefAdressViewset(viewsets.GenericViewSet, ListModelMixin):
 
         referral = user_with_referral_code.referred_by
         super_node_ref = getattr(referral.super_node_ref, "wallet_address", "")
-        master_node_ref = getattr(referral.master_node_ref, "wallet_address", "")
+        master_node_ref = getattr(
+            referral.master_node_ref, "wallet_address", "")
         sub_node_ref = getattr(referral.sub_node_ref, "wallet_address", "")
         admin_node_ref = admin_node
 
@@ -243,7 +245,8 @@ class ReferralViewSet(viewsets.ModelViewSet):
 
         try:
             wallet_address_from_cookie = request.query_params.get("address")
-            instance = ClientUser.objects.get(wallet_address=wallet_address_from_cookie)
+            instance = ClientUser.objects.get(
+                wallet_address=wallet_address_from_cookie)
         except (ObjectDoesNotExist, ValueError):
             return Response(
                 {"detail": "User not found or invalid address"},
@@ -469,7 +472,8 @@ class TransactionViewset(viewsets.ModelViewSet):
             )
             .annotate(
                 nodepass=F("sender__referral_code"),
-                referred_nodepass=F("referred_wallet_address__referral_code") or None,
+                referred_nodepass=F(
+                    "referred_wallet_address__referral_code") or None,
                 # referred_wallet_address = F('sender__referred_by__user__wallet_address')
             )
             .order_by("-timestamp")
@@ -481,7 +485,8 @@ class TransactionViewset(viewsets.ModelViewSet):
                 Transaction.objects.all()
                 .annotate(
                     nodepass=F("sender__referral_code"),
-                    referred_nodepass=F("referred_wallet_address__referral_code"),
+                    referred_nodepass=F(
+                        "referred_wallet_address__referral_code"),
                     # referred_wallet_address = F('sender__referred_by__user__wallet_address')
                 )
                 .order_by("-timestamp")
@@ -491,7 +496,8 @@ class TransactionViewset(viewsets.ModelViewSet):
                 queryset.filter(sender__wallet_address=wallet_address)
                 .annotate(
                     nodepass=F("sender__referral_code"),
-                    referred_nodepass=F("referred_wallet_address__referral_code"),
+                    referred_nodepass=F(
+                        "referred_wallet_address__referral_code"),
                     # referred_wallet_address = F('sender__referred_by__user__wallet_address')
                 )
                 .order_by("-timestamp")
@@ -515,10 +521,14 @@ class TransactionViewset(viewsets.ModelViewSet):
 
         server_type = serializer.validated_data.get("server_type")
         trx_hash = serializer.validated_data.get("trx_hash")
-        stake_swim_quantity = serializer.validated_data.get("stake_swim_quantity", 0)
-        supernode_quantity = serializer.validated_data.get("supernode_quantity", 0)
-        master_node_eth2_quantity = serializer.validated_data.get("master_node_eth2", 0)
-        super_node_eth2_quantity = serializer.validated_data.get("super_node_eth2", 0)
+        stake_swim_quantity = serializer.validated_data.get(
+            "stake_swim_quantity", 0)
+        supernode_quantity = serializer.validated_data.get(
+            "supernode_quantity", 0)
+        master_node_eth2_quantity = serializer.validated_data.get(
+            "master_node_eth2", 0)
+        super_node_eth2_quantity = serializer.validated_data.get(
+            "super_node_eth2", 0)
         if master_node_eth2_quantity:
             if sender.user_type != "MasterNode":
                 return Response({"message": "User is not masternode"})
@@ -775,7 +785,8 @@ class ServerInformationViewset(viewsets.GenericViewSet, ListModelMixin):
             transactions = Transaction.objects.all()
 
             generated_subnodes = (
-                transactions.filter(transaction_type="Generated SubNode").count() or 0
+                transactions.filter(
+                    transaction_type="Generated SubNode").count() or 0
             )
             return Response(
                 {"node_id": node_id, "generated_subnodes": generated_subnodes},
@@ -796,16 +807,19 @@ class AuthorizedNodeViewset(viewsets.ModelViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         ref_code = serializer.validated_data.get("referral_code")
-        user_wallet_address = serializer.validated_data.get("user_wallet_address")
+        user_wallet_address = serializer.validated_data.get(
+            "user_wallet_address")
         if not ref_code:
             return Response(
                 {"error": "Licensed node pass is required"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         try:
-            user_with_referral_code = ClientUser.objects.get(referral_code=ref_code)
+            user_with_referral_code = ClientUser.objects.get(
+                referral_code=ref_code)
             try:
-                referral = Referral.objects.create(user=user_with_referral_code)
+                referral = Referral.objects.create(
+                    user=user_with_referral_code)
             except Referral.DoesNotExist:
                 return Response(
                     {"error": "Error to create ref."},
@@ -860,7 +874,8 @@ class ExhaustedNodeViewset(viewsets.ModelViewSet):
 
     def list(self, request, *args, **kwargs):
         try:
-            exhausted_users = ClientUser.objects.filter(maturity=F("claimed_reward"))
+            exhausted_users = ClientUser.objects.filter(
+                maturity=F("claimed_reward"))
             transactions_list = Transaction.objects.filter(
                 sender__in=exhausted_users, transaction_type="ETH 2.0 Node"
             )
@@ -926,10 +941,12 @@ class GeneratedSubNodesViewset(viewsets.ModelViewSet):
 
             generated_trxs = Transaction.objects.filter(
                 sender=user,
-                transaction_type__in=["Generated SubNode", "Generated MasterNode"],
+                transaction_type__in=[
+                    "Generated SubNode", "Generated MasterNode"],
             )
             total_subnodes = (
-                generated_trxs.filter(transaction_type="Generated SubNode").count() or 0
+                generated_trxs.filter(
+                    transaction_type="Generated SubNode").count() or 0
             )
             total_masternodes = (
                 generated_trxs.filter(
@@ -1029,7 +1046,7 @@ class FirstTimeBuyingViewset(viewsets.ModelViewSet):
             # user.maturity += amount * 2
                 user.referred_by.user.save()
                 user.referred_by.save()
-            return Response("First-time buying successful", status=status.HTTP_200_OK)
+            return Response({"message": "First-time buying successful"}, status=status.HTTP_200_OK)
         except:
             return Response(
                 {"error": "User not found"}, status=status.HTTP_404_NOT_FOUND
