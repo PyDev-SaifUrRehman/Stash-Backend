@@ -31,21 +31,21 @@ class ClientUser(BaseUser):
         blank=True,
         related_name="referred_user",
     )
-    generated_reward = models.DecimalField(max_digits=14, decimal_places=6, default=0)
-    claimed_reward = models.DecimalField(max_digits=14, decimal_places=6, default=0)
-    total_revenue = models.DecimalField(max_digits=14, decimal_places=6, default=0)
-    maturity = models.DecimalField(max_digits=14, decimal_places=6, default=0)
-    total_deposit = models.DecimalField(max_digits=14, decimal_places=6, default=0)
+    generated_reward = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    claimed_reward = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    total_revenue = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    maturity = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    total_deposit = models.DecimalField(max_digits=14, decimal_places=2, default=0)
     referral_code = models.CharField(max_length=100, unique=True, null=True, blank=True)
     node_type = models.CharField(
         max_length=20, choices=NODE_TYPE_CHOICES, null=True, blank=True
     )
     admin_added_deposit = models.DecimalField(
-        max_digits=20, decimal_places=6, default=0
+        max_digits=20, decimal_places=2, default=0
     )
-    admin_maturity = models.DecimalField(max_digits=20, decimal_places=6, default=0)
+    admin_maturity = models.DecimalField(max_digits=20, decimal_places=2, default=0)
     admin_added_claimed_reward = models.DecimalField(
-        max_digits=20, decimal_places=6, default=0
+        max_digits=20, decimal_places=2, default=0
     )
     is_purchased = models.BooleanField(default=False)
     total_masternode_generated = models.PositiveIntegerField(default=0)
@@ -70,7 +70,7 @@ class Referral(models.Model):
         related_name="referral_trx",
     )
     no_of_referred_users = models.PositiveIntegerField(default=0)
-    commission_earned = models.DecimalField(max_digits=14, decimal_places=6, default=0)
+    commission_earned = models.DecimalField(max_digits=14, decimal_places=2, default=0)
     commission_received = models.BooleanField(default=False)
     super_node_ref = models.ForeignKey(
         ClientUser,
@@ -149,7 +149,7 @@ class Transaction(models.Model):
     )
     node_quantity = models.PositiveIntegerField(null=True, blank=True, default=0)
     stake_swim_quantity = models.PositiveIntegerField(null=True, blank=True, default=0)
-    amount = models.DecimalField(max_digits=14, decimal_places=6, default=0)
+    amount = models.DecimalField(max_digits=14, decimal_places=2, default=0)
     supernode_quantity = models.PositiveIntegerField(null=True, blank=True, default=0)
     timestamp = models.DateTimeField(auto_now_add=True)
     server_type = models.CharField(
@@ -157,7 +157,7 @@ class Transaction(models.Model):
     )
     trx_hash = models.CharField(max_length=255, null=True, blank=True)
     transaction_type = models.CharField(max_length=255, choices=TRANSACTION_TYPE)
-    setup_charges = models.DecimalField(max_digits=14, decimal_places=6, default=0)
+    setup_charges = models.DecimalField(max_digits=14, decimal_places=2, default=0)
     generated_subnode_type = models.CharField(
         choices=GENERATED_SUBNODE_TYPE, max_length=255, null=True, blank=True
     )

@@ -312,6 +312,8 @@ class AdminReferralSerializer(serializers.ModelSerializer):
 
 
 class NodePayoutSerializer(serializers.ModelSerializer):
+    trx_hash = serializers.CharField()
+    block_id = serializers.CharField()
     
     class Meta:
         model = NodePayout
