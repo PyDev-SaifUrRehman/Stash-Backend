@@ -6,12 +6,12 @@ from .models import NodeSetup, MasterNode, NodeManager, NodePartner, AdminReferr
 from StashClient.models import ClientUser, Referral
 from StashClient.utils import generate_referral_code
 
+
 class AdminUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = ClientUser
         fields = '__all__'
         read_only_fields = ['referral_code', 'referred_by']
-
 
     def validate_wallet_address(self, value):
         if ClientUser.objects.filter(wallet_address=value).exists():
@@ -41,24 +41,25 @@ class ParentMasterNodeSerializer(serializers.ModelSerializer):
             if admin_user.user_type == 'Client':
                 raise ValidationError(
                     "You don't have permission to perform this action.")
-            wallet_address = attrs['wallet_address'] 
-            referral_code = attrs['master_node_id'] 
+            wallet_address = attrs['wallet_address']
+            referral_code = attrs['master_node_id']
             referred_by_user = NodeSetup.objects.first().user
-            referred_by = Referral.objects.create(user = referred_by_user)
-            master_node, created = ClientUser.objects.get_or_create(wallet_address=wallet_address, referred_by = referred_by, referral_code = referral_code, user_type = 'MasterNode')
+            referred_by = Referral.objects.create(user=referred_by_user)
+            master_node, created = ClientUser.objects.get_or_create(
+                wallet_address=wallet_address, referred_by=referred_by, referral_code=referral_code, user_type='MasterNode')
             return attrs
         else:
             raise serializers.ValidationError(
                 "No admin wallet address added")
-        
+
     def validate_node(self, value):
         try:
-            node = NodeSetup.objects.get(node_id = value)
+            node = NodeSetup.objects.get(node_id=value)
             if node:
                 return node
         except:
             raise serializers.ValidationError("No node with this Id")
-        
+
 
 class MasterNodeSerializer(serializers.ModelSerializer):
     node = serializers.CharField()
@@ -70,22 +71,27 @@ class MasterNodeSerializer(serializers.ModelSerializer):
 
     def validate_node(self, value):
         try:
-            supernode = NodeSuperNode.objects.get(super_node__referral_code=value)
+            supernode = NodeSuperNode.objects.get(
+                super_node__referral_code=value)
             if supernode:
                 return supernode
         except NodeSuperNode.DoesNotExist:
-            raise serializers.ValidationError("No Supernode node with this Nodepass")
-    
+            raise serializers.ValidationError(
+                "No Supernode node with this Nodepass")
+
     def validate(self, attrs):
         qp_wallet_address = self.context['request'].query_params.get('address')
         if qp_wallet_address:
             try:
-                admin_user = ClientUser.objects.get(wallet_address=qp_wallet_address)
+                admin_user = ClientUser.objects.get(
+                    wallet_address=qp_wallet_address)
             except ClientUser.DoesNotExist:
-                raise ValidationError("You don't have permission to perform this action.")
+                raise ValidationError(
+                    "You don't have permission to perform this action.")
 
             if admin_user.user_type == 'Client':
-                raise ValidationError("You don't have permission to perform this action.")
+                raise ValidationError(
+                    "You don't have permission to perform this action.")
             return attrs
         else:
             raise serializers.ValidationError("No admin wallet address added")
@@ -97,8 +103,10 @@ class MasterNodeSerializer(serializers.ModelSerializer):
             referral_code = generate_referral_code()
             super_node_ref = super_node.super_node.referral_code
 
-            user_with_referral_code = ClientUser.objects.get(referral_code=super_node_ref)
-            referral, _ = Referral.objects.get_or_create(user=user_with_referral_code)
+            user_with_referral_code = ClientUser.objects.get(
+                referral_code=super_node_ref)
+            referral, _ = Referral.objects.get_or_create(
+                user=user_with_referral_code)
 
             if referral.user.user_type == 'SuperNode':
                 referral.super_node_ref = referral.user
@@ -114,11 +122,11 @@ class MasterNodeSerializer(serializers.ModelSerializer):
                 referral.save()
 
             master_node, created = ClientUser.objects.get_or_create(
-                wallet_address=master_node_address, 
-                user_type='MasterNode', 
-                node_type='MasterNode', 
-                referral_code=referral_code, 
-                referred_by=referral, 
+                wallet_address=master_node_address,
+                user_type='MasterNode',
+                node_type='MasterNode',
+                referral_code=referral_code,
+                referred_by=referral,
                 is_purchased=True
             )
 
@@ -132,12 +140,10 @@ class MasterNodeSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(f"Not valid Super Node {e}")
 
 
-
 class NodeManagerSerializer(serializers.ModelSerializer):
     node = serializers.CharField()
-    node_id = serializers.SerializerMethodField(read_only = True)
+    node_id = serializers.SerializerMethodField(read_only=True)
     manager = serializers.CharField()
-
 
     class Meta:
         model = NodeManager
@@ -145,14 +151,14 @@ class NodeManagerSerializer(serializers.ModelSerializer):
 
     def get_node_id(self, obj):
         return obj.node.node_id if obj.node else None
+
     def validate_node(self, value):
         try:
-            node = NodeSetup.objects.get(node_id = value)
+            node = NodeSetup.objects.get(node_id=value)
             if node:
                 return node
         except:
             raise serializers.ValidationError("No node with this Id")
-        
 
     def validate(self, attrs):
         qp_wallet_address = self.context['request'].query_params.get(
@@ -172,41 +178,43 @@ class NodeManagerSerializer(serializers.ModelSerializer):
         else:
             raise serializers.ValidationError(
                 "No admin wallet address added")
-        
 
     def validate_manager(self, value):
         try:
-            node_manager, created = ClientUser.objects.get_or_create(wallet_address=value, user_type = 'Manager')
-            manager = ClientUser.objects.get(wallet_address = value)
+            node_manager, created = ClientUser.objects.get_or_create(
+                wallet_address=value, user_type='Manager')
+            manager = ClientUser.objects.get(wallet_address=value)
             if manager:
                 return manager
         except:
             raise serializers.ValidationError("Not valid manager")
-        
 
 
 class NodePartnerSerializer(serializers.ModelSerializer):
     node = serializers.CharField()
-    
+
     class Meta:
         model = NodePartner
         fields = '__all__'
 
-    
     def validate(self, attrs):
         qp_wallet_address = self.context['request'].query_params.get(
             'address')
         node = attrs.get('node')
         share = attrs.get('share')
         instance = self.instance
-        existing_partners_count = NodePartner.objects.filter(node=node).exclude(pk=instance.pk if instance else None).count()
+        existing_partners_count = NodePartner.objects.filter(
+            node=node).exclude(pk=instance.pk if instance else None).count()
         if existing_partners_count >= 2:
-            raise serializers.ValidationError('A node cannot have more than 2 partners.')
+            raise serializers.ValidationError(
+                'A node cannot have more than 2 partners.')
 
-        total_share = NodePartner.objects.filter(node=node).exclude(pk=instance.pk if instance else None).aggregate(total=Sum('share'))['total'] or 0
+        total_share = NodePartner.objects.filter(node=node).exclude(
+            pk=instance.pk if instance else None).aggregate(total=Sum('share'))['total'] or 0
         total_share += share
         if total_share > 100:
-            raise serializers.ValidationError('The total share for a node must not exceed 100%.')
+            raise serializers.ValidationError(
+                'The total share for a node must not exceed 100%.')
         if qp_wallet_address:
             try:
                 admin_user = ClientUser.objects.get(
@@ -222,24 +230,22 @@ class NodePartnerSerializer(serializers.ModelSerializer):
             return attrs
         else:
             raise serializers.ValidationError(
-                "No admin wallet address added")       
-        
-        
+                "No admin wallet address added")
+
     def validate_node(self, value):
         try:
-            node = NodeSetup.objects.get(node_id = value)
+            node = NodeSetup.objects.get(node_id=value)
             if node:
                 return node
         except:
             raise serializers.ValidationError("No node with this Id")
-        
 
 
 class NodeSetupSerializer(serializers.ModelSerializer):
 
-    node_id = serializers.CharField(read_only = True)
+    node_id = serializers.CharField(read_only=True)
     user = serializers.CharField()
-    
+
     class Meta:
         model = NodeSetup
         fields = '__all__'
@@ -250,7 +256,7 @@ class NodeSetupSerializer(serializers.ModelSerializer):
             return value
         except ClientUser.DoesNotExist:
             raise serializers.ValidationError("Invalid User")
-        
+
     def validate(self, attrs):
         wallet_address_from_cookie = self.context['request'].query_params.get(
             'address')
@@ -271,12 +277,12 @@ class NodeSetupSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 "No wallet address")
 
+
 class AdminReferralSerializer(serializers.ModelSerializer):
     commission_earned = serializers.DecimalField(
         max_digits=10, decimal_places=2, read_only=True)
     no_of_referred_users = serializers.IntegerField(read_only=True)
     user = serializers.CharField()
-
 
     class Meta:
         model = AdminReferral
@@ -288,8 +294,9 @@ class AdminReferralSerializer(serializers.ModelSerializer):
             user = ClientUser.objects.get(wallet_address=value)
             return user
         except ClientUser.DoesNotExist:
-            raise serializers.ValidationError("User with this wallet address does not exist")
-        
+            raise serializers.ValidationError(
+                "User with this wallet address does not exist")
+
     def validate(self, attrs):
         wallet_address_from_cookie = self.context['request'].query_params.get(
             'address')
@@ -313,11 +320,11 @@ class AdminReferralSerializer(serializers.ModelSerializer):
 class NodePayoutSerializer(serializers.ModelSerializer):
     trx_hash = serializers.CharField()
     block_id = serializers.CharField()
-    
+    total_funds_deposited = serializers.DecimalField(max_digits = 18, decimal_places=2 )
+
     class Meta:
         model = NodePayout
         fields = '__all__'
-        
 
     def validate(self, attrs):
         wallet_address_from_cookie = self.context['request'].query_params.get(
@@ -346,15 +353,15 @@ class AddNodeToAdminSerializer(serializers.Serializer):
     admin_added_claimed_reward = serializers.DecimalField(
         max_digits=10, decimal_places=2)
 
-    node_quantity = serializers.IntegerField(default = 0, write_only = True)
-    stake_swim_quantity = serializers.IntegerField(default = 0, write_only = True)
-    supernode_quantity = serializers.IntegerField(default = 0, write_only = True)
+    node_quantity = serializers.IntegerField(default=0, write_only=True)
+    stake_swim_quantity = serializers.IntegerField(default=0, write_only=True)
+    supernode_quantity = serializers.IntegerField(default=0, write_only=True)
     # admin_maturity = serializers.IntegerField(default = 0, write_only = True)
-    claimed_amount = serializers.IntegerField(default = 0)
-    deposit_amount = serializers.IntegerField(default = 0)
+    claimed_amount = serializers.IntegerField(default=0)
+    deposit_amount = serializers.IntegerField(default=0)
     block_id = serializers.IntegerField()
     transaction_hash = serializers.CharField()
-    exhaustion = serializers.IntegerField(default = 0)
+    exhaustion = serializers.IntegerField(default=0)
 
     # class Meta:
     #     model = ClientUser
@@ -366,7 +373,7 @@ class AddNodeToAdminSerializer(serializers.Serializer):
     #         'supernode_quantity': {'write_only': True},
     #         'stake_swim_quantity': {'write_only': True},
     #         'admin_maturity': {'write_only': True},
-        # }
+    # }
     def validate_wallet_address(self, value):
 
         if ClientUser.objects.filter(wallet_address=value).exists():
@@ -396,7 +403,7 @@ class AddNodeToAdminSerializer(serializers.Serializer):
 
 class NodeSuperNodeSerializer(serializers.ModelSerializer):
     node = serializers.CharField()
-    node_id = serializers.SerializerMethodField(read_only = True)
+    node_id = serializers.SerializerMethodField(read_only=True)
     super_node = serializers.CharField()
 
     class Meta:
@@ -405,15 +412,14 @@ class NodeSuperNodeSerializer(serializers.ModelSerializer):
 
     def get_node_id(self, obj):
         return obj.node.node_id if obj.node else None
-    
+
     def validate_node(self, value):
         try:
-            node = NodeSetup.objects.get(node_id = value)
+            node = NodeSetup.objects.get(node_id=value)
             if node:
                 return node
         except:
             raise serializers.ValidationError("No node with this Id")
-        
 
     def validate(self, attrs):
         qp_wallet_address = self.context['request'].query_params.get(
@@ -433,7 +439,6 @@ class NodeSuperNodeSerializer(serializers.ModelSerializer):
         else:
             raise serializers.ValidationError(
                 "No admin wallet address added")
-        
 
     def validate_super_node(self, value):
         try:
@@ -442,8 +447,8 @@ class NodeSuperNodeSerializer(serializers.ModelSerializer):
             # referred_by_user = ClientUser.objects.get(referral_code = referred_by_code)
             try:
                 user_with_referral_code = ClientUser.objects.get(
-                referral_code=referred_by_code)
-                
+                    referral_code=referred_by_code)
+
                 try:
                     referral = Referral.objects.create(
                         user=user_with_referral_code)
@@ -459,18 +464,16 @@ class NodeSuperNodeSerializer(serializers.ModelSerializer):
                         referral.master_node_ref = referral.user.referred_by.master_node_ref
                         referral.sub_node_ref = referral.user
                         referral.save()
-                                
+
                 except Referral.DoesNotExist:
                     raise serializers.ValidationError("Error to create ref.")
             except ClientUser.DoesNotExist:
                 return serializers.ValidationError("User not found.")
 
-            
-            super_node, created = ClientUser.objects.get_or_create(wallet_address=value, user_type = 'SuperNode', node_type  = 'SuperNode', referral_code = referral_code, referred_by = referral, is_purchased = True)
-            supernode = ClientUser.objects.get(wallet_address = value)
+            super_node, created = ClientUser.objects.get_or_create(
+                wallet_address=value, user_type='SuperNode', node_type='SuperNode', referral_code=referral_code, referred_by=referral, is_purchased=True)
+            supernode = ClientUser.objects.get(wallet_address=value)
             if super_node:
                 return super_node
         except Exception as e:
             raise serializers.ValidationError(f"Not valid Super Node {e}")
-        
-    

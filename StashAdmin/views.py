@@ -225,6 +225,10 @@ class AdminClaimViewset(viewsets.ModelViewSet):
                 'amount', None)
             trx_hash = serializer.validated_data.get('trx_hash', None)
             block_id = serializer.validated_data.get('block_id', None)
+            total_funds_deposited = serializer.validated_data.get(
+                'total_funds_deposited', None)
+            # total_funds_deposited = self.request.body.get(
+            #     'total_funds_deposited', None)
             if amount_to_distribute is None or amount_to_distribute <= 0:
                 return Response({"error": "Amount must be greater than zero."}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -235,11 +239,14 @@ class AdminClaimViewset(viewsets.ModelViewSet):
                 return Response({"message": "No users to payout."}, status=status.HTTP_400_BAD_REQUEST)
 
             total_users = users_to_payout.count()
-            amount_per_user = Decimal(
-                amount_to_distribute) / Decimal(total_users)
+            # amount_per_user = Decimal(
+            #     amount_to_distribute) / Decimal(total_users)
             node_id = NodeSetup.objects.first()
 
             for user in users_to_payout:
+                user_deposit = user.total_deposit
+                amount_per_user = (
+                    Decimal(user_deposit) * Decimal(amount_to_distribute))/total_funds_deposited
                 remaining_maturity = user.maturity - user.claimed_reward
                 payout_amount = min(amount_per_user, remaining_maturity)
 
