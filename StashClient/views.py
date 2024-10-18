@@ -660,6 +660,8 @@ class TransactionViewset(viewsets.ModelViewSet):
                     supernode_quantity=0,
                     node_quantity=0,
                     generated_subnode_type="GeneratedMasterSubNode",
+                    referred_wallet_address=sender,
+
                 )
                 referred_master_node.total_subnode_generated += node_quantity
                 referred_master_node.save()
