@@ -603,7 +603,8 @@ class TransactionViewset(viewsets.ModelViewSet):
                 referral_commission_super_node = referral_commission_super
                 referral_commission_subnode_node = referral_commission_node
             else:
-                referral_commission_super_node = referral_commission_super
+                # referral_commission_super_node = referral_commission_super
+                referral_commission_super_node = referral_commission_node
 
         if referred_master_node:
             if referred_sub_node:
@@ -612,7 +613,8 @@ class TransactionViewset(viewsets.ModelViewSet):
                 referral_commission_subnode_node = referral_commission_node
 
             else:
-                referral_commission_master_node = referral_commission_master
+                # referral_commission_master_node = referral_commission_master
+                referral_commission_master_node = referral_commission_node
 
         if referred_sub_node:
             referral_commission_subnode_node = referral_commission_node
