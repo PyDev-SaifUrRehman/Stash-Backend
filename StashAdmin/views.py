@@ -108,7 +108,7 @@ class NodePartnerViewset(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        
+
         return super().create(request, *args, **kwargs)
 
 
@@ -243,9 +243,6 @@ class AdminClaimViewset(viewsets.ModelViewSet):
                 remaining_maturity = user.maturity - user.claimed_reward
                 payout_amount = min(amount_per_user, remaining_maturity)
 
-                user.claimed_reward += payout_amount
-                user.save()
-
                 Transaction.objects.create(
                     sender=user,
                     amount=payout_amount,
@@ -259,6 +256,8 @@ class AdminClaimViewset(viewsets.ModelViewSet):
                     node_quantity=0,
                     generated_subnode_type=None,
                 )
+                user.claimed_reward += payout_amount
+                user.save()
 
             serializer.save()
 

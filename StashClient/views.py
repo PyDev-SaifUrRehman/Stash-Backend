@@ -622,7 +622,7 @@ class TransactionViewset(viewsets.ModelViewSet):
             referral_commission = 0
 
         if referral_commission_super_node:
-            if sender.is_purchased:
+            if referred_super_node.is_purchased:
 
                 # handle_commission_transfer(sender, referred_by_user, referred_super_node, referral_commission_super_node, block_id, node_id, node, server_type, trx_hash,  node_quantity, master_node_eth2_quantity, super_node_eth2_quantity, generated_subnode_type = 'GeneratedSuperSubNode',)
                 Transaction.objects.create(
@@ -645,7 +645,7 @@ class TransactionViewset(viewsets.ModelViewSet):
 
         if referral_commission_master_node:
             # handle_commission_transfer(sender, referred_by_user, referred_master_node, referral_commission_master_node, block_id, node_id, node, server_type, trx_hash, node_quantity, master_node_eth2_quantity, super_node_eth2_quantity, generated_subnode_type = 'GeneratedMasterSubNode')
-            if sender.is_purchased:
+            if referred_master_node.is_purchased:
 
                 Transaction.objects.create(
                     sender=referred_master_node,
