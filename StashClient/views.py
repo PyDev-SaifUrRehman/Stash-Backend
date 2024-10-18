@@ -832,6 +832,9 @@ class AuthorizedNodeViewset(viewsets.ModelViewSet):
 
         try:
             user = ClientUser.objects.get(wallet_address=user_wallet_address)
+            if user.referred_by:
+                return Response("Liscenced Node is authorized", status=status.HTTP_200_OK)
+
         except ClientUser.DoesNotExist:
             return Response(
                 {"error": "User not found"}, status=status.HTTP_404_NOT_FOUND

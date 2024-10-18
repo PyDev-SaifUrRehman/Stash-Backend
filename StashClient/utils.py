@@ -57,7 +57,8 @@ def distribute_to_partners(sender, node, claim_fee, block_id, trx_hash):
 
     for partner in node_partners:
         partner_user, _ = ClientUser.objects.get_or_create(
-            wallet_address=partner.partner_wallet_address
+            wallet_address=partner.partner_wallet_address,
+            defaults={'referral_code': generate_referral_code()}
         )
         Transaction.objects.create(
             sender=partner_user,

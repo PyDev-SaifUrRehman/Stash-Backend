@@ -207,7 +207,6 @@ class NodePartnerSerializer(serializers.ModelSerializer):
         total_share += share
         if total_share > 100:
             raise serializers.ValidationError('The total share for a node must not exceed 100%.')
-        # return data
         if qp_wallet_address:
             try:
                 admin_user = ClientUser.objects.get(
